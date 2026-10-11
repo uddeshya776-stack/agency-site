@@ -33,7 +33,11 @@ Open the printed URL. Opening `index.html` straight from disk also works.
 
 ## Deploy
 
-Any static host works: Netlify (drag and drop the folder), Vercel, Cloudflare Pages or GitHub Pages. After deploying, change the `og:image` meta tag in `index.html` to an absolute URL (for example `https://your-domain.com/assets/img/og-image.jpg`) so link previews show the image.
+Any static host works: Netlify (drag and drop the folder), Vercel, Cloudflare Pages or GitHub Pages.
+
+To publish it from this repository with GitHub Pages: **Settings → Pages → Build and deployment → Deploy from a branch**, pick the branch that holds this folder (`main` once merged) and `/ (root)`, then **Save**. The demo is then live at https://uddeshya776-stack.github.io/agency-site/demos/luxury-real-estate/
+
+Link previews need absolute URLs, so `og:url` and `og:image` in `index.html` already point at that GitHub Pages address. When you deploy somewhere else, change both to the new address (for example `https://your-domain.com/` and `https://your-domain.com/assets/img/og-image.jpg`).
 
 ## Make it a client's site
 
