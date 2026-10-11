@@ -30,7 +30,8 @@
   <script>
     (function (d) {
       var c = d.documentElement.classList;
-      c.replace('no-js', 'js');
+      c.remove('no-js');
+      c.add('js');
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       c.add('motion');
       try { if (!sessionStorage.getItem('solenne-intro')) c.add('is-intro'); } catch (e) {}
