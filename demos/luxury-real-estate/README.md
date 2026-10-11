@@ -4,6 +4,8 @@ A concept website for a fictional luxury real estate house selling off-market vi
 
 Static HTML, CSS and JavaScript. No build step, no framework, no tracking.
 
+![Solenne: hero, collection, in focus, destinations, approach and client voices](preview.jpg)
+
 ## What's inside
 
 - **Opening curtain**: a gold sun-over-horizon mark draws itself, the wordmark rises, a counter runs to 100, then the curtain lifts into the hero. Shown once per browser session.
