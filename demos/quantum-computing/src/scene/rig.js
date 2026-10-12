@@ -19,7 +19,7 @@ const LAND = [
   { ring: { az: -15, r: 16.2, y: 1.2, ty: -0.1 }, fov: 31, shift: [0.17, 0.0], roll: 0 },
 ];
 const PORT = [
-  { pos: [4.6, 2.2, 13.6], tgt: [0.0, 0.6, 0.0], fov: 52, shift: [0.0, -0.10], roll: 0 },
+  { pos: [4.6, 2.2, 13.6], tgt: [0.0, 0.6, 0.0], fov: 62, shift: [0.0, -0.14], roll: 0 },
   { orbit: { az: 34, r: 5.2, y: 2.3, ay: 1.4, pan: 0.85 }, fov: 56, shift: [0.0, -0.16], roll: -0.03 },
   { orbit: { az: -22, r: 4.3, y: -0.35, ay: -0.85, pan: 0.0 }, fov: 58, shift: [0.0, -0.17], roll: 0.02 },
   { orbit: { az: 18, r: 3.6, y: -3.3, ay: -2.75, pan: 0.0 }, fov: 60, shift: [0.0, -0.12], roll: -0.015 },
