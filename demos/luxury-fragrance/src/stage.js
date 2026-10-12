@@ -15,6 +15,21 @@ export function createStage({ el, motion, isTouch }) {
     src.srcset = `assets/img/card-${id}-960.avif`;
     img.src = `assets/img/card-${id}-960.webp`;
   }
+  /* desktop: the choreography ends centred, but the collection copy sits on the left, so
+     slide the bottle right over the last part of the hero */
+  let lastFx = null;
+  function frame() {
+    if (!viewer || !viewer.setFrame) return;
+    const wide = innerWidth >= 900 && innerWidth / innerHeight > 1.1;
+    const k = Math.min(1, Math.max(0, (progress - 0.72) / 0.28));
+    const e = k * k * (3 - 2 * k);
+    // phones: keep the cap clear of the scent progress bar under the header
+    const fx = wide ? +(0.16 * e).toFixed(3) : 0, fy = wide ? 0 : +(0.035 * e).toFixed(3);
+    const key = fx + ',' + fy;
+    if (key === lastFx) return;
+    lastFx = key;
+    viewer.setFrame({ x: fx, y: fy, scale: 1 });
+  }
   function running() { return visible && active && !document.hidden; }
   function sync() {
     el.classList.toggle('is-hidden', !(visible && active));
@@ -37,10 +52,11 @@ export function createStage({ el, motion, isTouch }) {
       v.setProgress(progress);
       v.setScent(scent);
       v.resize();
+      frame();
       el.classList.add('is-live');
       sync();
       if (running()) v.intro?.();
-      window.addEventListener('resize', () => viewer && viewer.resize());
+      window.addEventListener('resize', () => { if (viewer) { viewer.resize(); lastFx = null; frame(); } });
       canvas.addEventListener('webglcontextlost', () => el.classList.remove('is-live'));
       canvas.addEventListener('webglcontextrestored', () => el.classList.add('is-live'));
     } catch (err) {
@@ -54,7 +70,7 @@ export function createStage({ el, motion, isTouch }) {
       const go = () => boot();
       if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1200 }); else setTimeout(go, 200);
     },
-    hero(p) { progress = p; if (viewer) viewer.setProgress(p); },
+    hero(p) { progress = p; if (viewer) { viewer.setProgress(p); frame(); } },
     scent(id) {
       if (id === scent) return;
       scent = id;
