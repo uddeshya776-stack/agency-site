@@ -1,30 +1,36 @@
-/* The bag: line items, complimentary samples, persistence. Tiny pub/sub. */
-import { byId, DISCOVERY, FREE_SHIPPING } from './data.js';
+/* The bag and the wishlist: line items, complimentary samples, persistence. Tiny pub/sub. */
+import { productById, byId, FREE_SHIPPING, convert } from './data.js';
 
-const KEY = 'ilvere-bag-v1';
+const KEY = 'ilvere-bag-v2';
+const WKEY = 'ilvere-wish-v1';
 const listeners = new Set();
 let state = load();
+let wish = loadWish();
 
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.items)) return { items: s.items.filter(valid), samples: Array.isArray(s.samples) ? s.samples.slice(0, 2) : [] };
+    if (s && Array.isArray(s.items)) return { items: s.items.filter(valid), samples: Array.isArray(s.samples) ? s.samples.filter(byId).slice(0, 2) : [] };
   } catch (e) { /* storage blocked */ }
   return { items: [], samples: [] };
 }
-function valid(it) { return it && (it.id === 'discovery' || byId(it.id)) && it.qty > 0; }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }
+function loadWish() { try { const w = JSON.parse(localStorage.getItem(WKEY)); return Array.isArray(w) ? w.filter(productById) : []; } catch (e) { return []; } }
+function valid(it) { return it && productById(it.pid) && it.qty > 0; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.setItem(WKEY, JSON.stringify(wish)); } catch (e) { /* ignore */ } }
 function emit(change) { save(); listeners.forEach((fn) => fn(state, change)); }
 
 export const bag = {
   get: () => state,
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
-  keyOf: (id, size, engraving) => [id, size || '', (engraving || '').trim()].join('|'),
-  add({ id, size = 50, engraving = '' }) {
-    const key = this.keyOf(id, id === 'discovery' ? '' : size, engraving);
+  add({ pid, scent = null, size = null, engraving = '', amount = null }) {
+    const p = productById(pid);
+    if (p.sizes && !size) size = 50;
+    if (p.scents && !scent) scent = 'ambre';
+    engraving = (engraving || '').trim();
+    const key = [pid, scent || '', size || '', engraving, amount || ''].join('|');
     const found = state.items.find((i) => i.key === key);
     if (found) found.qty = Math.min(found.qty + 1, 9);
-    else state.items.push({ key, id, size: id === 'discovery' ? null : Number(size), engraving: (engraving || '').trim(), qty: 1 });
+    else state.items.push({ key, pid, scent, size, engraving, amount, qty: 1 });
     emit({ type: 'add', key });
   },
   setQty(key, qty) {
@@ -43,8 +49,24 @@ export const bag = {
   },
   clear() { state = { items: [], samples: [] }; emit({ type: 'clear' }); },
   count: () => state.items.reduce((n, i) => n + i.qty, 0),
-  priceOf(it) { return it.id === 'discovery' ? DISCOVERY.price : byId(it.id).price[it.size]; },
-  subtotal() { return state.items.reduce((n, i) => n + this.priceOf(i) * i.qty, 0); },
-  shipping() { const s = this.subtotal(); return s === 0 || s >= FREE_SHIPPING ? 0 : 9; },
-  toFree() { return Math.max(0, FREE_SHIPPING - this.subtotal()); },
+  /* unit price in USD */
+  priceOf(it) {
+    const p = productById(it.pid);
+    if (it.amount) return it.amount;
+    return typeof p.price === 'number' ? p.price : p.price[it.size];
+  },
+  subtotalUSD() { return state.items.reduce((n, i) => n + this.priceOf(i) * i.qty, 0); },
+  /* in the shopper's currency, summed from converted line prices */
+  subtotal() { return state.items.reduce((n, i) => n + convert(this.priceOf(i)) * i.qty, 0); },
+  shipping() { const s = this.subtotalUSD(); return s === 0 || s >= FREE_SHIPPING ? 0 : convert(12); },
+  toFreeUSD() { return Math.max(0, FREE_SHIPPING - this.subtotalUSD()); },
+
+  /* wishlist */
+  wish: () => wish,
+  isWished: (pid) => wish.includes(pid),
+  toggleWish(pid) {
+    wish = wish.includes(pid) ? wish.filter((x) => x !== pid) : [...wish, pid];
+    emit({ type: 'wish', pid });
+    return wish.includes(pid);
+  },
 };

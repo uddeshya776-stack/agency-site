@@ -1,5 +1,5 @@
 /* Demo checkout: one page form with validation and a confirmation. Nothing is sent. */
-import { byId, euro } from './data.js';
+import { byId, moneyOfConverted as fmt } from './data.js';
 
 export function renderCheckout(el, { lineItemHTML, bag, gsap, motion }) {
   const st = bag.get();
@@ -16,6 +16,10 @@ export function renderCheckout(el, { lineItemHTML, bag, gsap, motion }) {
       <ol class="steps"><li class="is-on">Details</li><li>·</li><li class="is-on">Delivery</li><li>·</li><li class="is-on">Payment</li></ol>
       <form class="co-form" novalidate data-co>
         <fieldset>
+          <legend>Express checkout</legend>
+          <div class="express express--wide"><button type="button" class="express__btn">Apple Pay</button><button type="button" class="express__btn express__btn--shop">Shop Pay</button><button type="button" class="express__btn">PayPal</button></div>
+        </fieldset>
+        <fieldset>
           <legend>Contact</legend>
           <div class="field"><label for="co-email">Email</label><input id="co-email" name="email" type="email" autocomplete="email" required><span class="err"></span></div>
         </fieldset>
@@ -25,8 +29,8 @@ export function renderCheckout(el, { lineItemHTML, bag, gsap, motion }) {
           <div class="field field--half"><label for="co-last">Last name</label><input id="co-last" name="last" autocomplete="family-name" required><span class="err"></span></div>
           <div class="field"><label for="co-addr">Address</label><input id="co-addr" name="addr" autocomplete="street-address" required><span class="err"></span></div>
           <div class="field field--half"><label for="co-city">City</label><input id="co-city" name="city" autocomplete="address-level2" required><span class="err"></span></div>
-          <div class="field field--half"><label for="co-zip">Postcode</label><input id="co-zip" name="zip" autocomplete="postal-code" required><span class="err"></span></div>
-          <div class="field"><label for="co-country">Country</label><select id="co-country" name="country" autocomplete="country-name"><option>France</option><option>Germany</option><option>Italy</option><option>Spain</option><option>United Kingdom</option><option>United States</option><option>United Arab Emirates</option></select></div>
+          <div class="field field--half"><label for="co-zip">ZIP / Postcode</label><input id="co-zip" name="zip" autocomplete="postal-code" required><span class="err"></span></div>
+          <div class="field"><label for="co-country">Country</label><select id="co-country" name="country" autocomplete="country-name"><option>United States</option><option>United Kingdom</option><option>Canada</option><option>Australia</option><option>France</option><option>Germany</option><option>Netherlands</option><option>Denmark</option></select></div>
         </fieldset>
         <fieldset>
           <legend>Payment</legend>
@@ -37,17 +41,17 @@ export function renderCheckout(el, { lineItemHTML, bag, gsap, motion }) {
           </div>
         </fieldset>
         <p class="demo-note">This is a concept store: no payment is taken and nothing is sent.</p>
-        <button class="btn btn--dark btn--block" type="submit">Place order · ${euro(bag.subtotal() + ship)}</button>
+        <button class="btn btn--dark btn--block" type="submit">Place order · ${fmt(bag.subtotal() + ship)}</button>
       </form>
     </div>
     <aside class="summary" aria-label="Order summary">
       <h2>Your order</h2>
       ${st.items.map((it) => lineItemHTML(it, { controls: false })).join('')}
       ${samples.length ? `<div class="sum-row"><span>Samples</span><span>${samples.join(', ')}</span></div>` : ''}
-      <div class="sum-row"><span>Subtotal</span><span>${euro(bag.subtotal())}</span></div>
-      <div class="sum-row"><span>Delivery</span><span>${ship ? euro(ship) : 'Complimentary'}</span></div>
+      <div class="sum-row"><span>Subtotal</span><span>${fmt(bag.subtotal())}</span></div>
+      <div class="sum-row"><span>Shipping</span><span>${ship ? fmt(ship) : 'Complimentary'}</span></div>
       <div class="sum-row"><span>Gift wrapping &amp; engraving</span><span>Complimentary</span></div>
-      <div class="sum-row sum-row--total"><span>Total</span><span>${euro(bag.subtotal() + ship)}</span></div>
+      <div class="sum-row sum-row--total"><span>Total</span><span>${fmt(bag.subtotal() + ship)}</span></div>
     </aside>
   </div>`;
 

@@ -1,14 +1,17 @@
-/* Ilvère: page logic. Smooth scroll, intro, the live 3D stage (hero + collection),
-   shop grid, scent finder, product page, bag drawer and a demo checkout.
-   Routes: #/ home, #/product/<id>, #/checkout. Section links (#shop…) scroll on the home view. */
+/* Ilvère: page logic. Smooth scroll, intro, the live 3D stage (hero + collection), mega menu,
+   search, country/currency, wishlist, bag drawer, scent finder, gifting, boutiques, and the
+   routed views: #/ home, #/shop/<category>, #/product/<id>[/<scent>], #/checkout.
+   Section links (#finder…) scroll on the home view. */
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
 import Lenis from 'lenis';
-import { SCENTS, DISCOVERY, QUIZ, byId, euro, picture } from './data.js';
+import { SCENTS, PRODUCTS, CATEGORIES, QUIZ, BOUTIQUES, CURRENCIES, byId, productById, money, moneyOfConverted, picture, getCurrency, setCurrency, fromPrice, convert } from './data.js';
 import { bag } from './store.js';
+import { cardHTML, bindCardSwatches, esc, giftcardArt } from './cards.js';
 import { createStage } from './stage.js';
 import { renderProduct } from './product.js';
+import { renderShop } from './shop.js';
 import { renderCheckout } from './checkout.js';
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
@@ -29,14 +32,21 @@ if (motion) {
 }
 const scrollTo = (target, opts = {}) => {
   if (lenis) lenis.scrollTo(target, { duration: 1.6, easing: (t) => 1 - Math.pow(1 - t, 4), ...opts });
-  else (typeof target === 'number' ? window.scrollTo(0, target) : target.scrollIntoView());
+  else if (typeof target === 'number') window.scrollTo(0, target);
+  else target.scrollIntoView();
 };
-const lockScroll = (on) => { if (lenis) on ? lenis.stop() : lenis.start(); document.body.style.overflow = on ? 'hidden' : ''; };
+let locks = 0;
+const lockScroll = (on) => {
+  locks = Math.max(0, locks + (on ? 1 : -1));
+  const locked = locks > 0;
+  if (lenis) locked ? lenis.stop() : lenis.start();
+  document.body.style.overflow = locked ? 'hidden' : '';
+};
 
 /* ------------------------------------------------------------------ toast + fly to bag */
 const toastEl = $('[data-toast]');
 let toastT = 0;
-export function toast(msg) {
+function toast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add('is-on');
   clearTimeout(toastT);
@@ -49,7 +59,7 @@ function flyToBag(fromEl, color = '#C8A76A') {
   const b = bagBtn.querySelector('.bag-btn__count').getBoundingClientRect();
   const dot = document.createElement('i');
   dot.className = 'fly';
-  dot.style.background = color;
+  dot.style.cssText = `background:${color};left:0;top:0`;
   document.body.appendChild(dot);
   const x0 = a.left + a.width / 2, y0 = a.top + a.height / 2, x1 = b.left + b.width / 2, y1 = b.top + b.height / 2;
   const o = { t: 0 };
@@ -61,18 +71,28 @@ function flyToBag(fromEl, color = '#C8A76A') {
     },
     onComplete() { dot.remove(); bagBtn.classList.remove('bump'); void bagBtn.offsetWidth; bagBtn.classList.add('bump'); },
   });
-  dot.style.left = '0'; dot.style.top = '0';
 }
 
 /* ------------------------------------------------------------------ add to bag (shared) */
-export function addToBag({ id, size = 50, engraving = '', from }) {
-  bag.add({ id, size, engraving });
-  const s = byId(id);
-  flyToBag(from, s ? s.liquid : '#14110F');
-  const name = s ? `${s.name}, ${size} ml` : DISCOVERY.name;
-  toast(`${name} added to your bag`);
+function addToBag({ pid, scent = null, size = null, engraving = '', amount = null, from }) {
+  const p = productById(pid);
+  bag.add({ pid, scent, size, engraving, amount });
+  const s = byId(p.scent || scent);
+  flyToBag(from, s ? s.liquid : '#C8A76A');
+  toast(`${p.name}${p.scents && s ? ', ' + s.name : ''}${p.sizes ? `, ${size || 50} ml` : ''} added to your bag`);
   setTimeout(() => openBag(), motion ? 650 : 0);
 }
+document.addEventListener('click', (e) => {
+  const q = e.target.closest('[data-quick]');
+  if (q) addToBag({ pid: q.dataset.quick, scent: q.dataset.scent || null, size: productById(q.dataset.quick).sizes ? 50 : null, from: q });
+  const w = e.target.closest('[data-wish]');
+  if (w) {
+    const on = bag.toggleWish(w.dataset.wish);
+    $$(`[data-wish="${w.dataset.wish}"]`).forEach((b) => { b.setAttribute('aria-pressed', String(on)); });
+    w.classList.remove('pop'); void w.offsetWidth; w.classList.add('pop');
+    toast(on ? `Saved to your wishlist` : 'Removed from your wishlist');
+  }
+});
 
 /* ------------------------------------------------------------------ bag drawer */
 const drawer = $('[data-drawer]');
@@ -80,6 +100,7 @@ const panel = $('[data-drawer-panel]');
 let lastFocus = null;
 function openBag() {
   if (!drawer.hidden && drawer.classList.contains('is-open')) return;
+  closeOverlays();
   lastFocus = document.activeElement;
   renderBag();
   drawer.hidden = false;
@@ -88,6 +109,7 @@ function openBag() {
   setTimeout(() => panel.focus(), 50);
 }
 function closeBag() {
+  if (drawer.hidden) return;
   drawer.classList.remove('is-open');
   lockScroll(false);
   setTimeout(() => { drawer.hidden = true; }, 700);
@@ -95,50 +117,53 @@ function closeBag() {
 }
 bagBtn.addEventListener('click', openBag);
 $$('[data-bag-close]').forEach((b) => b.addEventListener('click', closeBag));
-drawer.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeBag();
-  if (e.key === 'Tab') {
-    const f = $$('button, a[href], input', panel).filter((el) => !el.disabled && el.offsetParent);
-    if (!f.length) return;
-    if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
-    else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
-  }
-});
-
-function thumb(id) {
-  const base = id === 'discovery' ? 'discovery' : `card-${id}`;
-  return `<img src="assets/img/${base}-640.webp" alt="" width="640" height="800" loading="lazy">`;
+function trapFocus(e, container) {
+  if (e.key !== 'Tab') return;
+  const f = $$('button, a[href], input, select', container).filter((el) => !el.disabled && el.offsetParent);
+  if (!f.length) return;
+  if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+  else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
 }
-export function lineItemHTML(it, { controls = true } = {}) {
-  const s = byId(it.id);
-  const name = s ? s.name : DISCOVERY.name;
-  const meta = s
-    ? `<span>Extrait de parfum · ${it.size} ml</span>${it.engraving ? `<span>Engraved: <em>${esc(it.engraving)}</em></span>` : ''}`
-    : '<span>5 × 2 ml · credited on your first bottle</span>';
+drawer.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeBag(); trapFocus(e, panel); });
+
+function thumbHTML(it) {
+  const p = productById(it.pid);
+  if (p.id === 'giftcard') return giftcardArt(it.amount);
+  return `<img src="assets/img/${p.img}-640.webp" alt="" width="640" height="800" loading="lazy">`;
+}
+function lineItemHTML(it, { controls = true } = {}) {
+  const p = productById(it.pid);
+  const s = byId(p.scent || it.scent);
+  const meta = [];
+  if (p.sizes) meta.push(`<span>Extrait de parfum · ${it.size} ml</span>`);
+  else if (p.scents) meta.push(`<span>${p.type} · ${s.name}</span>`);
+  else if (p.id === 'giftcard') meta.push('<span>Delivered by email</span>');
+  else meta.push(`<span>${p.type}</span>`);
+  if (it.engraving) meta.push(`<span>${p.id === 'giftcard' ? 'For' : 'Engraved'}: <em>${esc(it.engraving)}</em></span>`);
+  if (!controls) meta.push(`<span>Qty ${it.qty}</span>`);
   return `<div class="line-item" data-key="${esc(it.key)}">
-    <div class="line-item__img">${thumb(it.id)}</div>
-    <div><h3>${name}</h3><div class="line-item__meta">${meta}${controls ? '' : `<span>Qty ${it.qty}</span>`}</div>
+    <div class="line-item__img" style="position:relative">${thumbHTML(it)}</div>
+    <div><h3>${p.name}</h3><div class="line-item__meta">${meta.join('')}</div>
       ${controls ? `<div class="qty"><button type="button" data-qty="-1" aria-label="One less">−</button><span>${it.qty}</span><button type="button" data-qty="1" aria-label="One more">+</button></div>` : ''}
     </div>
-    <div class="line-item__right"><span class="line-item__price">${euro(bag.priceOf(it) * it.qty)}</span>${controls ? '<button type="button" class="remove" data-remove>Remove</button>' : ''}</div>
+    <div class="line-item__right"><span class="line-item__price">${moneyOfConverted(convertLine(it))}</span>${controls ? '<button type="button" class="remove" data-remove>Remove</button>' : ''}</div>
   </div>`;
 }
-export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const convertLine = (it) => convert(bag.priceOf(it)) * it.qty;
 
 function renderBag() {
   const st = bag.get();
   const n = bag.count();
   $('[data-bag-count-title]').textContent = n ? `(${n})` : '';
-  const toFree = bag.toFree();
+  const toFree = bag.toFreeUSD();
   $('[data-ship]').innerHTML = n
-    ? `${toFree > 0 ? `You are <b>${euro(toFree)}</b> away from complimentary delivery.` : 'Your order ships <b>free</b>, wrapped and engraved by hand.'}
-       <div class="ship-bar"><i style="transform: scaleX(${Math.min(1, bag.subtotal() / 150)})"></i></div>`
-    : 'Free delivery on orders over €150.';
+    ? `${toFree > 0 ? `You are <b>${money(toFree)}</b> away from complimentary shipping.` : 'Your order ships <b>free</b>, wrapped and sealed by hand.'}
+       <div class="ship-bar"><i style="transform: scaleX(${Math.min(1, bag.subtotalUSD() / 150)})"></i></div>`
+    : `Complimentary shipping on orders over ${money(150)}.`;
   const body = $('[data-bag-body]');
   if (!n) {
-    body.innerHTML = `<div class="empty"><h3>Your bag is empty.</h3><p>Perhaps start with the Discovery Set.</p><button class="btn btn--dark" type="button" data-empty-shop>Shop the collection</button></div>`;
+    body.innerHTML = `<div class="empty"><h3>Your bag is empty.</h3><p>Perhaps start with the Discovery Set.</p><a class="btn btn--dark" href="#/shop/all" data-bag-close-link>Shop the collection</a></div>`;
     $('[data-bag-foot]').innerHTML = '';
-    $('[data-empty-shop]', body).addEventListener('click', () => { closeBag(); goSection('#shop'); });
     return;
   }
   body.innerHTML = st.items.map((it) => lineItemHTML(it)).join('') + `
@@ -149,14 +174,15 @@ function renderBag() {
       }).join('')}</div></div>`;
   const ship = bag.shipping();
   $('[data-bag-foot]').innerHTML = `
-    <div class="sum-row"><span>Subtotal</span><span>${euro(bag.subtotal())}</span></div>
-    <div class="sum-row"><span>Delivery</span><span>${ship ? euro(ship) : 'Complimentary'}</span></div>
-    <div class="sum-row sum-row--total"><span>Total</span><span>${euro(bag.subtotal() + ship)}</span></div>
-    <a class="btn btn--dark btn--block" href="#/checkout" data-checkout>Checkout</a>
-    <small>Taxes included. Engraving and gift wrapping are always free.</small>`;
-  $('[data-checkout]').addEventListener('click', () => closeBag());
+    <div class="sum-row"><span>Subtotal</span><span>${moneyOfConverted(bag.subtotal())}</span></div>
+    <div class="sum-row"><span>Shipping</span><span>${ship ? moneyOfConverted(ship) : 'Complimentary'}</span></div>
+    <div class="sum-row sum-row--total"><span>Total</span><span>${moneyOfConverted(bag.subtotal() + ship)}</span></div>
+    <a class="btn btn--dark btn--block" href="#/checkout" data-bag-close-link>Checkout</a>
+    <div class="express" aria-label="Express checkout"><a href="#/checkout" data-bag-close-link class="express__btn">Apple Pay</a><a href="#/checkout" data-bag-close-link class="express__btn express__btn--shop">Shop Pay</a><a href="#/checkout" data-bag-close-link class="express__btn">PayPal</a></div>
+    <small>Or 4 interest-free payments of ${moneyOfConverted(Math.ceil((bag.subtotal() + ship) / 4))} with Klarna or Afterpay.</small>`;
 }
-$('[data-bag-body]').addEventListener('click', (e) => {
+panel.addEventListener('click', (e) => {
+  if (e.target.closest('[data-bag-close-link]')) { closeBag(); return; }
   const li = e.target.closest('[data-key]');
   const q = e.target.closest('[data-qty]');
   if (li && q) {
@@ -166,22 +192,62 @@ $('[data-bag-body]').addEventListener('click', (e) => {
   const sm = e.target.closest('[data-sample]');
   if (sm) bag.toggleSample(sm.dataset.sample);
 });
-function syncBagButton() {
+function syncCounts() {
   const n = bag.count();
   $('[data-bag-count]').textContent = n;
   bagBtn.classList.toggle('has-items', n > 0);
   bagBtn.setAttribute('aria-label', `Open bag, ${n} item${n === 1 ? '' : 's'}`);
+  const w = bag.wish().length, wc = $('[data-wish-count]');
+  wc.hidden = !w; wc.textContent = w;
 }
 bag.on((st, ch) => {
-  syncBagButton();
-  if (!drawer.hidden) {
+  syncCounts();
+  if (!drawer.hidden && ch.type !== 'wish') {
     const y = $('[data-bag-body]').scrollTop;
     renderBag();
     $('[data-bag-body]').scrollTop = y;
     if (ch.type !== 'add') $$('.line-item', drawer).forEach((el) => { el.style.animation = 'none'; });
   }
+  if (ch.type === 'wish' && currentView === 'shop' && currentShopCat === 'wishlist') route();
 });
-syncBagButton();
+syncCounts();
+
+/* ------------------------------------------------------------------ currency */
+function syncMoney() {
+  const c = getCurrency();
+  const sym = money(0).replace(/[\d\s.,]/g, '') || c;
+  $$('[data-cur-label]').forEach((el) => { el.textContent = `${c} ${sym}`; });
+  $$('[data-cur-country]').forEach((el) => { el.textContent = CURRENCIES[c].label; });
+  $$('[data-money]').forEach((el) => { el.textContent = money(Number(el.dataset.money)); });
+}
+const region = $('[data-region]');
+function openRegion() {
+  closeOverlays();
+  const c = getCurrency();
+  $('[data-region-list]').innerHTML = Object.entries(CURRENCIES).map(([k, v]) => `<button type="button" data-cur="${k}" aria-pressed="${k === c}"><span>${v.label}</span><span>${k} · ${new Intl.NumberFormat(v.locale, { style: 'currency', currency: k, maximumFractionDigits: 0, currencyDisplay: 'narrowSymbol' }).format(0).replace(/[\d\s.,]/g, '')}</span></button>`).join('');
+  region.hidden = false;
+  lockScroll(true);
+  setTimeout(() => $('[data-cur][aria-pressed="true"]', region)?.focus(), 30);
+}
+function closeRegion() { if (region.hidden) return; region.hidden = true; lockScroll(false); }
+document.addEventListener('click', (e) => { if (e.target.closest('[data-region-open]')) openRegion(); });
+region.addEventListener('click', (e) => {
+  if (e.target.closest('[data-region-close]')) closeRegion();
+  const b = e.target.closest('[data-cur]');
+  if (b) {
+    setCurrency(b.dataset.cur);
+    closeRegion();
+    rerenderPrices();
+    toast(`Prices now in ${b.dataset.cur}`);
+  }
+});
+region.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeRegion(); trapFocus(e, region); });
+function rerenderPrices() {
+  syncMoney();
+  renderGrids();
+  renderCollectionPrices();
+  if (currentView !== 'home') route({ keepScroll: true });
+}
 
 /* ------------------------------------------------------------------ announce bar */
 (() => {
@@ -198,102 +264,189 @@ syncBagButton();
   }, 4200);
 })();
 
-/* ------------------------------------------------------------------ header states + menu */
+/* ------------------------------------------------------------------ header states */
 const header = $('[data-header]');
 let lastY = 0;
 function updateHeader() {
   const y = window.scrollY;
-  const view = currentView;
-  header.classList.toggle('is-stuck', y > 30 || view !== 'home');
-  let light = view !== 'home';
-  if (view === 'home') {
-    // light header whenever a light section sits under it
-    const probe = document.elementsFromPoint(window.innerWidth / 2, 40).find((el) => el.matches?.('.section, .lineup, .site-footer, .hero, .collection'));
+  header.classList.toggle('is-stuck', y > 30 || currentView !== 'home');
+  let light = currentView !== 'home';
+  if (currentView === 'home') {
+    const probe = document.elementsFromPoint(window.innerWidth / 2, 40).find((el) => el.matches?.('.section, .lineup, .refill, .site-footer, .hero, .collection'));
     light = !!probe && !probe.matches('.section--dark, .site-footer, .hero, .collection');
   }
   header.classList.toggle('is-light', light);
-  const hide = y > 400 && y > lastY + 4 && !document.body.classList.contains('menu-open');
-  if (hide) header.classList.add('is-hidden');
+  const busy = document.body.classList.contains('menu-open') || document.body.classList.contains('mega-open');
+  if (y > 400 && y > lastY + 4 && !busy) header.classList.add('is-hidden');
   else if (y < lastY - 4 || y < 400) header.classList.remove('is-hidden');
   lastY = y;
 }
 window.addEventListener('scroll', updateHeader, { passive: true });
 
+/* ------------------------------------------------------------------ mega menu */
+const megaBtn = $('[data-mega-btn]');
+const mega = $('[data-mega]');
+$('[data-mega-scents]').innerHTML = SCENTS.map((s) => `<li><a href="#/product/${s.id}"><i style="background:${s.liquid}"></i>${s.name}</a></li>`).join('');
+let megaT = 0;
+function setMega(open) {
+  clearTimeout(megaT);
+  if (open === !mega.hidden) return;
+  megaBtn.setAttribute('aria-expanded', String(open));
+  document.body.classList.toggle('mega-open', open);
+  mega.hidden = !open;
+  if (open && motion) {
+    gsap.fromTo(mega, { clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)', duration: 0.7, ease: 'expo.out' });
+    gsap.fromTo($$('.mega__col, .mega__feature', mega), { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: 'expo.out', stagger: 0.05, delay: 0.05 });
+  }
+}
+megaBtn.addEventListener('click', () => setMega(mega.hidden));
+if (!isTouch) {
+  megaBtn.addEventListener('mouseenter', () => setMega(true));
+  header.addEventListener('mouseleave', () => { megaT = setTimeout(() => setMega(false), 180); });
+  mega.addEventListener('mouseenter', () => clearTimeout(megaT));
+  $$('.site-nav a, .brand, .site-tools').forEach((el) => el.addEventListener('mouseenter', () => { megaT = setTimeout(() => setMega(false), 120); }));
+}
+mega.addEventListener('click', (e) => { if (e.target.closest('a')) setMega(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !mega.hidden) { setMega(false); megaBtn.focus(); } });
+
+/* ------------------------------------------------------------------ mobile menu */
 const menuBtn = $('[data-menu-btn]');
 const menu = $('[data-menu]');
 function setMenu(open) {
+  if (open === !menu.hidden) return;
   menuBtn.setAttribute('aria-expanded', String(open));
   document.body.classList.toggle('menu-open', open);
-  if (open) {
-    menu.hidden = false;
-    lockScroll(true);
-    gsap.fromTo($$('nav a', menu), { yPercent: 60, opacity: 0 }, { yPercent: 0, opacity: 1, stagger: 0.06, duration: 0.8, ease: 'expo.out' });
-  } else { menu.hidden = true; lockScroll(false); }
+  menu.hidden = !open;
+  lockScroll(open);
+  if (open) gsap.fromTo($$('nav a', menu), { yPercent: 60, opacity: 0 }, { yPercent: 0, opacity: 1, stagger: 0.05, duration: 0.8, ease: 'expo.out' });
 }
-menuBtn.addEventListener('click', () => setMenu(menuBtn.getAttribute('aria-expanded') !== 'true'));
+menuBtn.addEventListener('click', () => setMenu(menu.hidden));
+menu.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
 
-/* section links: scroll on home, or go home first */
-function goSection(hash) {
-  if (document.body.classList.contains('menu-open')) setMenu(false);
-  const target = $(hash);
-  if (!target) return;
-  if (currentView !== 'home') {
-    pendingSection = hash;
-    location.hash = '#/';
+/* ------------------------------------------------------------------ search */
+const search = $('[data-search]');
+const sInput = $('[data-search-input]');
+const sBody = $('[data-search-body]');
+const INDEX = PRODUCTS.map((p) => {
+  const s = p.scent ? byId(p.scent) : null;
+  const text = [p.name, p.type, p.desc, p.cat, s && [s.family, s.familyLong, s.mood, ...s.notes.top, ...s.notes.heart, ...s.notes.base].join(' ')].join(' ').toLowerCase();
+  return { p, text };
+});
+const POPULAR = ['Rose', 'Vanilla', 'Candle', 'Oud', 'Gift', 'Iris', 'Travel'];
+function searchResults(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return null;
+  const words = q.split(/\s+/);
+  return INDEX.filter((r) => words.every((w) => r.text.includes(w))).map((r) => r.p);
+}
+function mark(text, q) {
+  if (!q) return esc(text);
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  return i < 0 ? esc(text) : esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
+}
+function resultHTML(p, q) {
+  const s = p.scent ? byId(p.scent) : null;
+  const img = p.id === 'giftcard' ? giftcardArt(100) : `<img src="assets/img/${p.img}-640.webp" alt="" width="640" height="800" loading="lazy">`;
+  return `<a class="s-result" href="#/product/${p.id}"><span class="s-result__img" style="position:relative">${img}</span><b>${mark(p.name, q)}</b><span>${s ? mark(s.familyLong, q) + ' · ' : ''}${money(fromPrice(p))}</span></a>`;
+}
+function renderSearch() {
+  const q = sInput.value;
+  const res = searchResults(q);
+  if (!res) {
+    sBody.innerHTML = `<div><p class="search__label">Popular searches</p><div class="search__chips">${POPULAR.map((t) => `<button type="button" class="chip" data-term="${t}">${t}</button>`).join('')}</div></div>
+      <div><p class="search__label">Bestsellers</p><div class="search__results">${PRODUCTS.filter((p) => ['ambre', 'iris', 'candle', 'discovery'].includes(p.id)).map((p) => resultHTML(p, '')).join('')}</div></div>`;
     return;
   }
-  // the collection is a long pinned section: land at its start
-  scrollTo(target, { offset: hash === '#collection' || hash === '#top' ? 0 : -20 });
+  sBody.innerHTML = res.length
+    ? `<div><p class="search__label">${res.length} result${res.length === 1 ? '' : 's'} for “${esc(q.trim())}”</p><div class="search__results">${res.map((p) => resultHTML(p, q.trim())).join('')}</div></div>`
+    : `<p class="search__empty">Nothing for “${esc(q.trim())}” yet. Try a note, like vanilla or rose.</p>`;
 }
+function openSearch() {
+  closeOverlays();
+  search.hidden = false;
+  lockScroll(true);
+  renderSearch();
+  setTimeout(() => sInput.focus(), 30);
+}
+function closeSearch() { if (search.hidden) return; search.hidden = true; lockScroll(false); }
+$('[data-search-open]').addEventListener('click', openSearch);
+$('[data-search-close]').addEventListener('click', closeSearch);
+sInput.addEventListener('input', renderSearch);
+sBody.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-term]');
+  if (t) { sInput.value = t.dataset.term; renderSearch(); sInput.focus(); }
+  if (e.target.closest('a')) closeSearch();
+});
+search.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSearch(); trapFocus(e, search); });
+document.addEventListener('keydown', (e) => {
+  if ((e.key === '/' || (e.key === 'k' && (e.metaKey || e.ctrlKey))) && !/input|textarea|select/i.test(document.activeElement.tagName)) { e.preventDefault(); openSearch(); }
+});
+
+function closeOverlays() { closeSearch(); closeRegion(); setMega(false); setMenu(false); }
+
+/* ------------------------------------------------------------------ section links */
 let pendingSection = null;
+function goSection(hash) {
+  closeOverlays();
+  const target = $(hash);
+  if (!target) return;
+  if (currentView !== 'home') { pendingSection = hash; location.hash = '#/'; return; }
+  scrollTo(target, { offset: hash === '#collection' ? 0 : -20 });
+}
 document.addEventListener('click', (e) => {
   const a = e.target.closest('a[href^="#"]');
   if (!a) return;
   const href = a.getAttribute('href');
-  if (href.startsWith('#/')) { if (document.body.classList.contains('menu-open')) setMenu(false); return; }
+  if (href.startsWith('#/')) return;
   if (href.length > 1) { e.preventDefault(); goSection(href); }
 });
 $('[data-home]').addEventListener('click', (e) => {
-  if (currentView === 'home') { e.preventDefault(); scrollTo(0); history.replaceState(null, '', '#/'); }
+  if (currentView === 'home') { e.preventDefault(); scrollTo(0); }
 });
 
-/* ------------------------------------------------------------------ shop grid */
-function cardHTML(s, { sizes = '(min-width: 900px) 31vw, 50vw' } = {}) {
-  return `<article class="card">
-    <a class="card__media" href="#/product/${s.id}" aria-label="${s.name}">
-      ${picture(`card-${s.id}`, { sizes, alt: `${s.name} bottle on its set`, cls: 'card__main' })}
-      ${picture(`detail-${s.id}`, { sizes, alt: '', cls: 'card__alt' })}
-    </a>
-    <button type="button" class="card__quick" data-quick="${s.id}"><span>Add to bag · 50 ml</span><span>${euro(s.price[50])}</span></button>
-    <div class="card__info">
-      <h3 class="card__name"><a href="#/product/${s.id}"><span class="card__swatch" style="background:${s.liquid}"></span>${s.name}</a></h3>
-      <span class="card__price">from ${euro(s.price[50])}</span>
-      <p class="card__mood">${s.mood}</p>
-    </div>
-  </article>`;
-}
-export { cardHTML };
+/* ------------------------------------------------------------------ home: categories, grids, gifts */
+const arrow = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>';
+const CAT_IMG = { fragrance: 'card-ambre', home: 'card-candle', body: 'card-cream', gifts: 'discovery' };
+$('[data-cats]').innerHTML = CATEGORIES.map((c) => `<a class="cat" href="#/shop/${c.id}">${picture(CAT_IMG[c.id], { sizes: '(min-width: 900px) 24vw, 50vw', alt: '' })}<span class="cat__arrow">${arrow}</span><span class="cat__text"><b>${c.name}</b><span>${c.blurb}</span></span></a>`).join('');
+const variantCount = PRODUCTS.reduce((n, p) => n + (p.scents ? 5 : p.sizes ? 2 : 1), 0);
+$$('[data-product-count]').forEach((el) => { el.textContent = variantCount; });
+
 const grid = $('[data-grid]');
-grid.innerHTML = SCENTS.map((s, i) => cardHTML(s).replace('<article class="card">', `<article class="card">${i === 0 ? '<span class="card__tag">Bestseller</span>' : i === 3 ? '<span class="card__tag">New batch</span>' : ''}`)).join('') + `
-  <article class="card card--set">
-    <a class="card__media" href="#discovery" aria-label="The Discovery Set">
-      ${picture('discovery', { sizes: '(min-width: 900px) 31vw, 50vw', alt: 'The Discovery Set', cls: 'card__main' })}
-    </a>
-    <button type="button" class="card__quick" data-quick="discovery"><span>Add to bag</span><span>${euro(DISCOVERY.price)}</span></button>
-    <div class="card__info"><h3 class="card__name"><a href="#discovery">The Discovery Set</a></h3><span class="card__price">${euro(DISCOVERY.price)}</span><p class="card__mood">${DISCOVERY.line}</p></div>
-  </article>`;
-document.addEventListener('click', (e) => {
-  const q = e.target.closest('[data-quick]');
-  if (q) addToBag({ id: q.dataset.quick, size: 50, from: q });
-  const d = e.target.closest('[data-add-discovery]');
-  if (d) addToBag({ id: 'discovery', from: d });
+const giftGrid = $('[data-gift-grid]');
+const budgetEl = $('[data-budget]');
+const BUDGETS = [{ max: 100, label: 'Under' }, { max: 150, label: 'Under' }, { max: 300, label: 'Under' }, { max: Infinity, label: 'Over' }];
+let budget = 0;
+function renderGrids() {
+  grid.innerHTML = PRODUCTS.filter((p) => p.cat === 'fragrance' && p.sizes).concat(productById('discovery')).map((p) => cardHTML(p, { sizes: '(min-width: 900px) 31vw, 50vw' })).join('');
+  grid.classList.add('grid--best');
+  budgetEl.innerHTML = BUDGETS.map((b, i) => `<button type="button" data-budget-i="${i}" aria-pressed="${i === budget}">${b.max === Infinity ? `${money(300)} and over` : `Under ${money(b.max)}`}</button>`).join('');
+  renderGifts();
+}
+function renderGifts() {
+  const b = BUDGETS[budget], lo = budget === 3 ? 300 : budget > 0 ? BUDGETS[budget - 1].max : 0;
+  let list = PRODUCTS.filter((p) => { const v = fromPrice(p); return b.max === Infinity ? v >= 300 || p.id === 'giftcard' : v < b.max && v >= (budget === 0 ? 0 : lo * 0.5); });
+  if (budget === 3) list = [productById('iris'), productById('ambre'), productById('rose'), productById('giftcard')];
+  giftGrid.innerHTML = list.slice(0, 4).map((p) => cardHTML(p, { sizes: '(min-width: 1100px) 23vw, 50vw', scent: p.scents ? ['rose', 'ambre', 'iris', 'figue'][list.indexOf(p) % 4] : null })).join('');
+  if (motion) gsap.from($$('.card', giftGrid), { opacity: 0, y: 30, duration: 0.9, ease: 'expo.out', stagger: 0.06 });
+}
+budgetEl.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-budget-i]');
+  if (!b) return;
+  budget = Number(b.dataset.budgetI);
+  $$('[data-budget-i]', budgetEl).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  renderGifts();
 });
+bindCardSwatches(document.body);
+
+/* boutiques: open now, computed from the visitor's clock as a stand-in */
+$('[data-boutiques]').innerHTML = BOUTIQUES.map((b) => `<li class="boutique"><b>${b.city}${b.flagship ? '<small>Flagship</small>' : ''}</b><span class="boutique__area">${b.area}</span><span class="boutique__addr">${b.addr}</span><span class="boutique__open"><i></i>${b.hours}</span></li>`).join('');
+$('[data-book]').addEventListener('click', (e) => { e.preventDefault(); toast('Consultation requests open in the full store. This is a concept site.'); });
 
 /* ------------------------------------------------------------------ scent finder */
 (() => {
   const card = $('[data-finder-card]');
   let step = 0, scores = {};
-  function progress() { return `<div class="finder__progress">${QUIZ.map((_, i) => `<i class="${i < step ? 'is-done' : ''}"></i>`).join('')}</div>`; }
+  const progress = () => `<div class="finder__progress">${QUIZ.map((_, i) => `<i class="${i < step ? 'is-done' : ''}"></i>`).join('')}</div>`;
   function show() {
     if (step < QUIZ.length) {
       const q = QUIZ[step];
@@ -305,7 +458,7 @@ document.addEventListener('click', (e) => {
       card.innerHTML = `${progress()}<div class="finder__result">
         <a class="card__media" href="#/product/${best.id}">${picture(`card-${best.id}`, { sizes: '260px', alt: best.name })}</a>
         <div><p class="eyebrow">Your scent</p><h3>${best.name}</h3><p>${best.line} ${best.mood}.</p>
-          <div class="actions"><button class="btn btn--dark" type="button" data-quick="${best.id}">Add · ${euro(best.price[50])}</button><a class="btn btn--ghost" href="#/product/${best.id}">Discover</a></div>
+          <div class="actions"><button class="btn btn--dark" type="button" data-quick="${best.id}">Add · ${money(best.price[50])}</button><button class="btn btn--ghost" type="button" data-quick="discovery">Try the set · ${money(42)}</button></div>
           <button class="finder__restart" type="button" data-restart>Start again</button></div></div>`;
     }
     if (motion) gsap.from(card.children[1], { opacity: 0, y: 24, duration: 0.8, ease: 'expo.out' });
@@ -313,8 +466,7 @@ document.addEventListener('click', (e) => {
   card.addEventListener('click', (e) => {
     const b = e.target.closest('[data-a]');
     if (b) {
-      const a = QUIZ[step].a[Number(b.dataset.a)];
-      Object.entries(a.s).forEach(([k, v]) => { scores[k] = (scores[k] || 0) + v; });
+      Object.entries(QUIZ[step].a[Number(b.dataset.a)].s).forEach(([k, v]) => { scores[k] = (scores[k] || 0) + v; });
       step++; show();
     }
     if (e.target.closest('[data-restart]')) { step = 0; scores = {}; show(); }
@@ -340,27 +492,32 @@ function splitReveal(scope = document) {
     if (el.dataset.splitDone) return;
     el.dataset.splitDone = '1';
     const st = new SplitText(el, { type: 'lines', linesClass: 'line', mask: 'lines' });
-    gsap.from(st.lines, { yPercent: 110, duration: 1.3, ease: 'expo.out', stagger: 0.09, scrollTrigger: { trigger: el, start: 'top 85%' } });
+    gsap.from(st.lines, { yPercent: 110, duration: 1.3, ease: 'expo.out', stagger: 0.09, scrollTrigger: { trigger: el, start: 'top 88%' } });
+  });
+}
+function revealImages(scope) {
+  if (!motion) return;
+  $$('[data-reveal-img]', scope).forEach((el) => {
+    gsap.to(el, { clipPath: 'inset(0% 0% 0% 0% round 4px)', duration: 1.6, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 85%' } });
+    gsap.to(el.querySelector('img'), { scale: 1, duration: 2, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 85%' } });
   });
 }
 function homeMotion() {
-  splitReveal($('[data-view="home"]'));
+  const home = $('[data-view="home"]');
+  splitReveal(home);
   if (!motion) return;
-  $$('[data-reveal-img]').forEach((el) => {
-    gsap.to(el, { clipPath: 'inset(0% 0% 0% 0% round 4px)', duration: 1.6, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 80%' } });
-    gsap.to(el.querySelector('img'), { scale: 1, duration: 2, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 80%' } });
+  revealImages(home);
+  gsap.fromTo('[data-parallax] picture', { yPercent: -8 }, { yPercent: 8, ease: 'none', scrollTrigger: { trigger: '[data-parallax]', start: 'top bottom', end: 'bottom top', scrub: true } });
+  ScrollTrigger.batch('.view--home .card, .cat, .voice, .boutique, .refill__list li', {
+    start: 'top 92%', once: true,
+    onEnter: (els) => gsap.from(els, { opacity: 0, y: 50, duration: 1.2, ease: 'expo.out', stagger: 0.07 }),
   });
-  const pm = $('[data-parallax] picture');
-  gsap.fromTo(pm, { yPercent: -8 }, { yPercent: 8, ease: 'none', scrollTrigger: { trigger: '[data-parallax]', start: 'top bottom', end: 'bottom top', scrub: true } });
-  $$('.card', grid).forEach((c, i) => gsap.from(c, { opacity: 0, y: 60, duration: 1.2, ease: 'expo.out', delay: (i % 3) * 0.08, scrollTrigger: { trigger: c, start: 'top 92%' } }));
-  $$('.voice').forEach((c, i) => gsap.from(c, { opacity: 0, y: 40, duration: 1.1, ease: 'expo.out', delay: i * 0.07, scrollTrigger: { trigger: c, start: 'top 92%' } }));
   $$('[data-count-to]').forEach((el) => {
     const to = Number(el.dataset.countTo), o = { v: 0 };
-    gsap.to(o, { v: to, duration: 2, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 88%' }, onUpdate: () => { el.textContent = Math.round(o.v); } });
+    gsap.to(o, { v: to, duration: 2, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 90%' }, onUpdate: () => { el.textContent = Math.round(o.v); } });
   });
 }
 
-/* hero copy + captions follow the hero scroll progress */
 function heroTimeline() {
   const hero = $('[data-hero]');
   const copy = $$('[data-hero-eyebrow], [data-hero-title], [data-hero-lede], [data-hero-ctas]');
@@ -385,12 +542,9 @@ function heroTimeline() {
   });
 }
 
-/* collection: five scents over one long pinned section */
+let renderCollectionPrices = () => {};
 function collection() {
-  const names = $('[data-col-names]');
-  const detail = $('[data-col-detail]');
-  const dots = $('[data-col-dots]');
-  const idx = $('[data-col-index]');
+  const names = $('[data-col-names]'), detail = $('[data-col-detail]'), dots = $('[data-col-dots]'), idx = $('[data-col-index]');
   names.innerHTML = SCENTS.map((s) => {
     const [a, ...rest] = s.name.split(' ');
     return `<p class="col-name" aria-hidden="true">${a} <em>${rest.join(' ')}</em></p>`;
@@ -398,20 +552,16 @@ function collection() {
   detail.innerHTML = SCENTS.map((s) => `<div class="col-detail">
       <p class="col-detail__mood">${s.line} ${s.mood}.</p>
       <dl class="notes-row"><div><dt>Top</dt><dd>${s.notes.top.join(', ')}</dd></div><div><dt>Heart</dt><dd>${s.notes.heart.join(', ')}</dd></div><div><dt>Base</dt><dd>${s.notes.base.join(', ')}</dd></div></dl>
-      <div class="col-detail__buy"><span class="col-detail__price">${euro(s.price[50])}<small>50 ml</small></span>
+      <div class="col-detail__buy"><span class="col-detail__price"><span data-money="${s.price[50]}">${money(s.price[50])}</span><small>50 ml</small></span>
         <button class="btn btn--light" type="button" data-quick="${s.id}">Add to bag</button>
-        <a class="link-u" href="#/product/${s.id}" style="font:500 11px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase">Discover</a></div>
+        <a class="link-u col-detail__more" href="#/product/${s.id}">Discover</a></div>
     </div>`).join('');
+  renderCollectionPrices = () => $$('[data-money]', detail).forEach((el) => { el.textContent = money(Number(el.dataset.money)); });
   dots.innerHTML = SCENTS.map((s, i) => `<li><button type="button" data-dot="${i}" aria-label="${s.name}"><span>${s.name}</span><i></i></button></li>`).join('');
   const nameEls = $$('.col-name', names), detEls = $$('.col-detail', detail), dotEls = $$('button', dots);
   const sec = $('[data-collection]');
   let cur = -1;
-  // prepare letters for the name swap
-  const chars = nameEls.map((el) => {
-    if (!motion) return [];
-    const st = new SplitText(el, { type: 'chars', charsClass: 'ch' });
-    return st.chars;
-  });
+  const chars = nameEls.map((el) => (motion ? new SplitText(el, { type: 'chars', charsClass: 'ch' }).chars : []));
   gsap.set(nameEls, { autoAlpha: 0 });
   gsap.set(detEls, { autoAlpha: 0 });
   function set(i, instant) {
@@ -442,7 +592,6 @@ function collection() {
     const top = sec.offsetTop, h = sec.offsetHeight - window.innerHeight;
     scrollTo(top + h * ((i + 0.5) / SCENTS.length), { duration: 1.2 });
   }));
-  return sec;
 }
 
 /* ------------------------------------------------------------------ intro */
@@ -460,49 +609,65 @@ function intro() {
   });
 }
 function heroIn() {
-  if (!motion) return;
-  const title = $('[data-hero-title]');
-  const st = new SplitText(title, { type: 'lines', linesClass: 'line', mask: 'lines' });
+  if (!motion || currentView !== 'home') return;
+  const st = new SplitText($('[data-hero-title]'), { type: 'lines', linesClass: 'line', mask: 'lines' });
   gsap.from(st.lines, { yPercent: 115, duration: 1.6, ease: 'expo.out', stagger: 0.12, delay: 0.15 });
   gsap.from(['[data-hero-eyebrow]', '[data-hero-lede]', '[data-hero-ctas]', '[data-hero-scroll]'], { opacity: 0, y: 24, duration: 1.4, ease: 'expo.out', stagger: 0.1, delay: 0.45, clearProps: 'transform' });
 }
 
 /* ------------------------------------------------------------------ router */
 let currentView = 'home';
+let currentShopCat = null;
 let disposeView = null;
-const views = { home: $('[data-view="home"]'), product: $('[data-view="product"]'), checkout: $('[data-view="checkout"]') };
+const views = { home: $('[data-view="home"]'), shop: $('[data-view="shop"]'), product: $('[data-view="product"]'), checkout: $('[data-view="checkout"]') };
 const homeY = { y: 0 };
-function route() {
+const ctx = () => ({ addToBag, cardHTML, splitReveal, revealImages, gsap, ScrollTrigger, motion, isTouch, toast, lineItemHTML, bag, convertLine });
+function route({ keepScroll = false } = {}) {
   const h = location.hash;
-  const m = h.match(/^#\/product\/([a-z]+)/);
-  const next = m && byId(m[1]) ? 'product' : h.startsWith('#/checkout') ? 'checkout' : 'home';
-  if (currentView === 'home' && next !== 'home') homeY.y = window.scrollY;
+  let next = 'home', arg = null, arg2 = null, m;
+  if ((m = h.match(/^#\/product\/([a-z]+)(?:\/([a-z]+))?/)) && productById(m[1])) { next = 'product'; arg = m[1]; arg2 = m[2] && byId(m[2]) ? m[2] : null; }
+  else if ((m = h.match(/^#\/shop(?:\/([a-z]+))?/))) { next = 'shop'; arg = m[1] || 'all'; }
+  else if (h.startsWith('#/checkout')) next = 'checkout';
+  const y = window.scrollY;
+  if (currentView === 'home' && next !== 'home') homeY.y = y;
+  closeOverlays();
   if (disposeView) { disposeView(); disposeView = null; }
   Object.entries(views).forEach(([k, el]) => { el.hidden = k !== next; });
   const prevView = currentView;
   currentView = next;
+  currentShopCat = next === 'shop' ? arg : null;
   if (stage) stage.setActive(next === 'home');
   if (next === 'product') {
-    disposeView = renderProduct(views.product, byId(m[1]), { addToBag, cardHTML, splitReveal, gsap, ScrollTrigger, motion, isTouch, toast });
-    document.title = `${byId(m[1]).name} | Ilvère`;
+    const p = productById(arg);
+    disposeView = renderProduct(views.product, p, arg2, ctx());
+    document.title = `${p.name}${arg2 ? ' · ' + byId(arg2).name : ''} | Ilvère`;
+  } else if (next === 'shop') {
+    disposeView = renderShop(views.shop, arg, ctx());
+    document.title = `${arg === 'all' ? 'Shop all' : arg === 'wishlist' ? 'Wishlist' : (CATEGORIES.find((c) => c.id === arg) || { name: 'Shop' }).name} | Ilvère`;
   } else if (next === 'checkout') {
-    disposeView = renderCheckout(views.checkout, { lineItemHTML, bag, toast, gsap, motion });
+    disposeView = renderCheckout(views.checkout, ctx());
     document.title = 'Checkout | Ilvère';
   } else document.title = 'Ilvère | Extraits de Parfum, Paris';
-  if (next !== 'home') { views[next].classList.remove('view-fade'); void views[next].offsetWidth; views[next].classList.add('view-fade'); }
+  if (next !== 'home' && !keepScroll) { views[next].classList.remove('view-fade'); void views[next].offsetWidth; views[next].classList.add('view-fade'); }
   ScrollTrigger.refresh();
-  if (next === 'home') {
-    if (pendingSection) { const t = $(pendingSection); pendingSection = null; window.scrollTo(0, homeY.y); requestAnimationFrame(() => scrollTo(t, { immediate: prevView !== 'home' ? false : false })); }
-    else if (prevView !== 'home') { if (lenis) lenis.scrollTo(homeY.y, { immediate: true }); else window.scrollTo(0, homeY.y); }
-  } else { if (lenis) lenis.scrollTo(0, { immediate: true }); else window.scrollTo(0, 0); }
+  const jump = (to) => { if (lenis) lenis.scrollTo(to, { immediate: true, force: true }); else window.scrollTo(0, to); };
+  if (keepScroll) jump(y);
+  else if (next === 'home') {
+    if (pendingSection) { const t = $(pendingSection); pendingSection = null; jump(t.offsetTop - 20); }
+    else if (prevView !== 'home') jump(homeY.y);
+  } else jump(0);
   updateHeader();
 }
-window.addEventListener('hashchange', route);
+window.addEventListener('hashchange', () => route());
 
 /* ------------------------------------------------------------------ boot */
 (async function boot() {
   const introDone = intro();
   stage = createStage({ el: $('[data-stage]'), motion, isTouch });
+  syncMoney();
+  renderGrids();
+  // split text only after the fonts are in, or the measured lines break wrongly
+  await Promise.race([document.fonts ? document.fonts.ready : Promise.resolve(), new Promise((r) => setTimeout(r, 1500))]);
   heroTimeline();
   collection();
   homeMotion();
@@ -513,7 +678,6 @@ window.addEventListener('hashchange', route);
   // the 3D stage only runs while the hero or the collection is on screen
   const shop = $('#shop');
   const vis = () => stage.setVisible(currentView === 'home' && window.scrollY < shop.offsetTop + 2);
-  ScrollTrigger.create({ trigger: shop, start: 'top bottom', end: 'top top', onUpdate: vis, onToggle: vis });
   window.addEventListener('scroll', vis, { passive: true });
   vis();
   window.addEventListener('pointermove', (e) => stage.pointer(e.clientX / innerWidth * 2 - 1, e.clientY / innerHeight * 2 - 1), { passive: true });
