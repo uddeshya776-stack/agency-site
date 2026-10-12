@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en-GB" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nadir | Quantum computing, ten millikelvin down</title>
+  <meta name="description" content="A concept website for Nadir, a fictional quantum computing company. Scroll to descend through a dilution refrigerator rendered live in 3D, from room temperature to ten millikelvin.">
+  <meta name="theme-color" content="#05070b">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="canonical" href="https://uddeshya776-stack.github.io/agency-site/demos/quantum-computing/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Nadir, a concept website">
+  <meta property="og:url" content="https://uddeshya776-stack.github.io/agency-site/demos/quantum-computing/">
+  <meta property="og:title" content="Nadir | Quantum computing, ten millikelvin down">
+  <meta property="og:description" content="A concept website with a real-time 3D descent through a quantum computer's refrigerator, from room temperature to ten millikelvin.">
+  <meta property="og:image" content="https://uddeshya776-stack.github.io/agency-site/demos/quantum-computing/assets/img/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A gold dilution refrigerator rendered in 3D next to the headline: Computing begins where heat ends.">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preload" href="assets/fonts/mona-sans-wght.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" as="image" type="image/avif" fetchpriority="high"
+        imagesrcset="assets/img/poster-0-portrait-720.avif 720w, assets/img/poster-0-portrait-1080.avif 1080w"
+        imagesizes="100vw" media="(max-aspect-ratio: 4/5)">
+  <link rel="preload" as="image" type="image/avif" fetchpriority="high"
+        imagesrcset="assets/img/poster-0-1280.avif 1280w, assets/img/poster-0-1920.avif 1920w, assets/img/poster-0-2560.avif 2560w"
+        imagesizes="100vw" media="(min-aspect-ratio: 4/5)">
+  <link rel="stylesheet" href="assets/css/styles.css">
+
+  <script>
+    (function (d) {
+      var c = d.documentElement.classList;
+      c.remove('no-js');
+      c.add('js');
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      c.add('motion');
+      if (window.WebGL2RenderingContext && !/[?&]static\b/.test(location.search)) c.add('want-3d');
+    })(document);
+  </script>
+  <script type="module" src="assets/js/main.js"></script>
+
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- The live 3D machine. The poster is the first paint and the fallback. -->
+  <div class="stage" data-stage aria-hidden="true">
+    <picture class="stage__poster" data-poster>
+      <source type="image/avif" media="(max-aspect-ratio: 4/5)"
+              srcset="assets/img/poster-0-portrait-720.avif 720w, assets/img/poster-0-portrait-1080.avif 1080w" sizes="100vw">
+      <source type="image/webp" media="(max-aspect-ratio: 4/5)"
+              srcset="assets/img/poster-0-portrait-720.webp 720w, assets/img/poster-0-portrait-1080.webp 1080w" sizes="100vw">
+      <source type="image/avif"
+              srcset="assets/img/poster-0-1280.avif 1280w, assets/img/poster-0-1920.avif 1920w, assets/img/poster-0-2560.avif 2560w" sizes="100vw">
+      <source type="image/webp"
+              srcset="assets/img/poster-0-1280.webp 1280w, assets/img/poster-0-1920.webp 1920w, assets/img/poster-0-2560.webp 2560w" sizes="100vw">
+      <img src="assets/img/poster-0-1920.webp" alt="" width="1920" height="1080" fetchpriority="high" decoding="async">
+    </picture>
+    <img class="stage__still" data-still src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" width="1920" height="1080" decoding="async" hidden>
+    <canvas class="stage__canvas" data-canvas></canvas>
+    <div class="stage__shade"></div>
+  </div>
+
+  <header class="site-header" data-header>
+    <div class="site-header__inner">
+      <a class="brand" href="#top" aria-label="Nadir, back to the top">
+        <svg class="brand__mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+          <path d="M5 7h22M9 13h14M13 19h6" />
+          <circle cx="16" cy="25.5" r="2.25" />
+        </svg>
+        <span class="brand__word">Nadir</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <ul class="nav__list">
+          <li><a href="#machine">The machine</a></li>
+          <li><a href="#processor">Processor</a></li>
+          <li><a href="#roadmap">Roadmap</a></li>
+        </ul>
+      </nav>
+      <a class="btn btn--line site-header__cta" href="#access">Request access</a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu" data-menu-toggle>
+        <span class="menu-toggle__label">Menu</span>
+        <span class="menu-toggle__icon" aria-hidden="true"><i></i><i></i></span>
+      </button>
+    </div>
+  </header>
+
+  <nav class="menu" id="menu" aria-label="Menu" data-menu data-lenis-prevent hidden>
+    <ul class="menu__list">
+      <li><a href="#machine" data-menu-link>The machine</a></li>
+      <li><a href="#processor" data-menu-link>Processor</a></li>
+      <li><a href="#roadmap" data-menu-link>Roadmap</a></li>
+      <li><a href="#access" data-menu-link>Request access</a></li>
+    </ul>
+    <p class="menu__foot">Nadir Q-25 opens to research partners in 2027.</p>
+  </nav>
+
+  <!-- Instrument panel: the stage temperature follows the scroll. Decorative; the same facts are in the text. -->
+  <aside class="hud" data-hud aria-hidden="true">
+    <ol class="gauge" data-gauge>
+      <li class="gauge__tick" data-k="300"><button type="button" tabindex="-1" data-jump="0"><span class="gauge__t">300 K</span><span class="gauge__name">Room temperature</span></button></li>
+      <li class="gauge__tick gauge__tick--minor" data-k="50"><span class="gauge__t">50 K</span><span class="gauge__name">First pulse-tube stage</span></li>
+      <li class="gauge__tick" data-k="4"><button type="button" tabindex="-1" data-jump="1"><span class="gauge__t">4 K</span><span class="gauge__name">Second pulse-tube stage</span></button></li>
+      <li class="gauge__tick gauge__tick--minor" data-k="0.8"><span class="gauge__t">800 mK</span><span class="gauge__name">Still</span></li>
+      <li class="gauge__tick" data-k="0.1"><button type="button" tabindex="-1" data-jump="2"><span class="gauge__t">100 mK</span><span class="gauge__name">Cold plate</span></button></li>
+      <li class="gauge__tick" data-k="0.01"><button type="button" tabindex="-1" data-jump="3"><span class="gauge__t">10 mK</span><span class="gauge__name">Mixing chamber</span></button></li>
+      <li class="gauge__tick" data-k="0.0098"><button type="button" tabindex="-1" data-jump="4"><span class="gauge__t">QPU</span><span class="gauge__name">Nadir Q-25</span></button></li>
+    </ol>
+    <span class="gauge__marker" data-gauge-marker></span>
+    <div class="readout">
+      <span class="readout__label"><i class="readout__live"></i>Stage temperature</span>
+      <span class="readout__value"><span data-temp>300.0</span><span class="readout__unit" data-unit>K</span></span>
+      <span class="readout__stage" data-stage-name>Room temperature</span>
+    </div>
+    <div class="readout-bar" data-readout-bar><i data-readout-fill></i></div>
+  </aside>
+
+  <!-- Labels that pin themselves to parts of the machine (desktop). -->
+  <div class="callouts" data-callouts aria-hidden="true">
+    <div class="callout" data-anchor="plate4K" data-on="1">4 K plate</div>
+    <div class="callout callout--left" data-anchor="attenuator" data-on="2">Attenuator, &minus;20 dB</div>
+    <div class="callout" data-anchor="circulator" data-on="3">Circulator</div>
+    <div class="callout callout--left" data-anchor="mxc" data-on="3">Mixing chamber plate</div>
+    <div class="callout" data-anchor="chip" data-on="4">Nadir Q-25</div>
+  </div>
+
+  <main id="main">
+    <section class="chapter chapter--hero" id="top" data-chapter="0" aria-labelledby="hero-title">
+      <div class="chapter__copy">
+        <h1 class="chapter__title" id="hero-title" data-split>Computing begins where heat&nbsp;ends.</h1>
+        <p class="chapter__lede" data-reveal>Nadir builds superconducting quantum processors and the cryogenic machines that keep them silent: six stages, from room temperature to ten millikelvin.</p>
+        <div class="chapter__actions" data-reveal>
+          <a class="btn btn--solid" href="#access">Request early access</a>
+          <a class="descend" href="#machine"><span class="descend__line" aria-hidden="true"></span>Scroll to descend</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="machine" data-chapter="1" aria-labelledby="c1-title">
+      <div class="chapter__copy">
+        <p class="chapter__stage">Pulse-tube stages, 4 K</p>
+        <h2 class="chapter__title" id="c1-title" data-split>Every stage strips away heat. And with it, noise.</h2>
+        <p class="chapter__lede" data-reveal>A two-stage pulse-tube cooler takes the machine from 300 kelvin down to 4. Hundreds of coaxial lines are hand-formed into loops, so they survive the contraction without a single break.</p>
+      </div>
+    </section>
+
+    <section class="chapter" id="cold-plate" data-chapter="2" aria-labelledby="c2-title">
+      <div class="chapter__copy">
+        <p class="chapter__stage">Still and cold plate, 100 mK</p>
+        <h2 class="chapter__title" id="c2-title" data-split>A thousand signals, attenuated to a whisper.</h2>
+        <p class="chapter__lede" data-reveal>Every line passes attenuators and filters at each plate, so the instruction reaches the qubit and the warmth of the room never does.</p>
+      </div>
+    </section>
+
+    <section class="chapter" id="mixing-chamber" data-chapter="3" aria-labelledby="c3-title">
+      <div class="chapter__copy">
+        <p class="chapter__stage">Mixing chamber, under 10 mK</p>
+        <h2 class="chapter__title" id="c3-title" data-split>Ten millikelvin. Colder than deep space.</h2>
+        <p class="chapter__lede" data-reveal>Helium-3 dissolving into helium-4 pulls the last heat out of the mixing chamber. Deep space idles at 2.7&nbsp;kelvin; this is about 270 times colder.</p>
+      </div>
+    </section>
+
+    <section class="chapter" id="qpu" data-chapter="4" aria-labelledby="c4-title">
+      <div class="chapter__copy">
+        <p class="chapter__stage">The processor, 9.8 mK</p>
+        <h2 class="chapter__title" id="c4-title" data-split>Where qubits hold their breath.</h2>
+        <p class="chapter__lede" data-reveal>Twenty-five superconducting qubits, shielded from every trace of heat and light, hold a quantum state long enough to compute with it.</p>
+      </div>
+    </section>
+
+    <section class="chapter chapter--specs" id="processor" data-chapter="5" aria-labelledby="c5-title">
+      <div class="chapter__copy">
+        <h2 class="chapter__title" id="c5-title" data-split>Nadir <span class="nowrap">Q-25</span></h2>
+        <p class="chapter__lede" data-reveal>Our first processor, designed and fabricated in-house and measured in our own fridges. Figures from the current production run.</p>
+        <dl class="specs" data-reveal-group>
+          <div class="specs__item">
+            <dt>Qubits</dt>
+            <dd>25 transmons on a square&nbsp;lattice</dd>
+          </div>
+          <div class="specs__item">
+            <dt>Two-qubit gate fidelity</dt>
+            <dd><span class="specs__num" data-count="99.7" data-decimals="1">99.7</span>% median, CZ</dd>
+          </div>
+          <div class="specs__item">
+            <dt>Coherence, T<sub>1</sub></dt>
+            <dd><span class="specs__num" data-count="210">210</span> µs median</dd>
+          </div>
+          <div class="specs__item">
+            <dt>Readout</dt>
+            <dd><span class="specs__num" data-count="600">600</span> ns at 99.2% fidelity</dd>
+          </div>
+          <div class="specs__item">
+            <dt>Operating temperature</dt>
+            <dd><span class="specs__num" data-count="9.8" data-decimals="1">9.8</span> mK</dd>
+          </div>
+          <div class="specs__item">
+            <dt>Access</dt>
+            <dd>Cloud and on-premises, from&nbsp;2027</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="chapter chapter--roadmap" id="roadmap" data-chapter="6" aria-labelledby="c6-title">
+      <div class="chapter__copy">
+        <h2 class="chapter__title" id="c6-title" data-split>From twenty-five qubits to the first useful answer.</h2>
+      </div>
+      <ol class="timeline" data-timeline>
+        <li class="timeline__item is-now">
+          <span class="timeline__year">2026</span>
+          <h3 class="timeline__title">Q-25 in production</h3>
+          <p>Twenty-five qubits at 99.7% two-qubit fidelity, calibrated every morning.</p>
+        </li>
+        <li class="timeline__item">
+          <span class="timeline__year">2027</span>
+          <h3 class="timeline__title">Research partners</h3>
+          <p>The first partners in chemistry and materials run their circuits on Q-25.</p>
+        </li>
+        <li class="timeline__item">
+          <span class="timeline__year">2029</span>
+          <h3 class="timeline__title">Logical qubits</h3>
+          <p>Error-corrected qubits that outlive the physical ones they are built from.</p>
+        </li>
+        <li class="timeline__item">
+          <span class="timeline__year">2031</span>
+          <h3 class="timeline__title">A useful answer</h3>
+          <p>A chemistry problem that no classical computer can finish, solved at ten millikelvin.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="chapter chapter--access" id="access" data-chapter="7" aria-labelledby="c7-title">
+      <div class="chapter__copy">
+        <h2 class="chapter__title" id="c7-title" data-split>Bring us a problem worth cooling down for.</h2>
+        <p class="chapter__lede" data-reveal>In 2027 we open Q-25 to a small group of research partners in chemistry, materials and optimisation. Tell us what you would run first.</p>
+
+        <form class="access-form" data-form method="post">
+          <div class="field">
+            <label for="f-name">Full name</label>
+            <input id="f-name" name="name" type="text" autocomplete="name" required>
+            <p class="field__error" id="f-name-err" hidden>Enter your name.</p>
+          </div>
+          <div class="field">
+            <label for="f-email">Work email</label>
+            <input id="f-email" name="email" type="email" autocomplete="email" required>
+            <p class="field__error" id="f-email-err" hidden>Enter an email address like name@lab.org.</p>
+          </div>
+          <div class="field">
+            <label for="f-org">Organisation</label>
+            <input id="f-org" name="organisation" type="text" autocomplete="organization" required>
+            <p class="field__error" id="f-org-err" hidden>Enter your organisation.</p>
+          </div>
+          <div class="field field--wide">
+            <label for="f-run">What would you run first? <span class="field__opt">Optional</span></label>
+            <textarea id="f-run" name="first_run" rows="3"></textarea>
+          </div>
+          <div class="access-form__foot">
+            <button class="btn btn--solid" type="submit" data-submit>Request access</button>
+            <p class="access-form__note">Concept site: nothing you type is sent.</p>
+          </div>
+        </form>
+        <p class="access-form__status" role="status" aria-live="polite" data-status></p>
+
+        <div class="access-done" data-done hidden tabindex="-1">
+          <h3 class="access-done__title">Request received.</h3>
+          <p>Thank you. This is a concept site, so nothing was sent. On a live site, your request would go straight to the team.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" data-opaque>
+    <div class="site-footer__inner">
+      <div class="site-footer__brand">
+        <svg class="brand__mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+          <path d="M5 7h22M9 13h14M13 19h6" />
+          <circle cx="16" cy="25.5" r="2.25" />
+        </svg>
+        <p class="site-footer__tag">Quantum computing,<br>ten millikelvin down.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul>
+          <li><a href="#machine">The machine</a></li>
+          <li><a href="#processor">Processor</a></li>
+          <li><a href="#roadmap">Roadmap</a></li>
+          <li><a href="#access">Request access</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__note">Concept website. Nadir is a fictional company; all names and figures are illustrative. The machine is a real-time WebGL scene built in code: no video, no stock imagery.</p>
+      <a class="site-footer__top" href="#top">Back to the top</a>
+    </div>
+  </footer>
+</body>
+</html>
