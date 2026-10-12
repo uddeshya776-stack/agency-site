@@ -22,6 +22,9 @@ const root = document.documentElement;
 const motion = root.classList.contains('motion');
 const isTouch = matchMedia('(hover: none)').matches;
 
+/* a missing image never shows a broken icon or its alt text over the layout */
+document.addEventListener('error', (e) => { if (e.target.tagName === 'IMG') e.target.style.visibility = 'hidden'; }, true);
+
 /* ------------------------------------------------------------------ smooth scroll */
 let lenis = null;
 if (motion) {
