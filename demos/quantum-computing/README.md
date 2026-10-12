@@ -59,7 +59,7 @@ Link previews need absolute URLs, so `og:url` and `og:image` in `index.html` poi
 
 | What | Where |
 | --- | --- |
-| Brand name, title, description, structured data | `<head>` of `index.html` |
+| Brand name, title, description and link preview | `<head>` of `index.html` |
 | Logo mark | the brand `<svg>` in `index.html` and `assets/img/favicon.svg` |
 | Colours and type scale | CSS custom properties at the top of `assets/css/styles.css` |
 | Chapter text | the `<section data-chapter>` blocks in `index.html` |
@@ -73,7 +73,9 @@ All names and figures are illustrative and should be replaced with the client's 
 ## Performance and accessibility
 
 - The page is readable and interactive before any 3D loads: the first paint is a still of the opening shot, and three.js is fetched only after the page has finished loading, then crossfades in.
-- Quality adapts to the device: a tier is picked from the GPU, screen and memory, and a frame-time governor lowers the resolution, then the post effects, if frames run long. The scene is built in small slices so it never blocks input.
+- Quality adapts to the device: a tier is picked from the GPU and the screen (phones and tablets start at mid, with FXAA instead of MSAA), and a frame-time governor lowers the resolution, then the post effects, if frames run long. It restores them once frames recover, and it recognises a 30 Hz cap (iOS Low Power Mode, battery savers) instead of mistaking it for a slow GPU. The scene is built in small slices so it never blocks input.
+- Frames are paced: at most 60 per second on 120 Hz screens, and 30 on touch screens while the camera rests, so phones stay cool. The stage is sized to the large viewport, so the phone's address bar never resizes the 3D mid-scroll.
+- If the browser drops the graphics context (common on phones under memory pressure), the stills stand in and the 3D comes back when the context is restored.
 - Respects `prefers-reduced-motion`: no smooth scrolling, no camera motion, still images instead of the live scene, every element shown in its final state. Without WebGL 2, or with `?static` in the URL, the same still images are used. Content is fully readable without JavaScript.
 - Skip link, visible focus states, keyboard-reachable navigation and menu (Escape closes it), form errors announced and linked to their fields. The instrument panel is decorative and hidden from screen readers; the same information is in the text.
 

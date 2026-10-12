@@ -83,6 +83,7 @@ const unitEl = $('[data-unit]');
 const stageEl = $('[data-stage-name]');
 const readoutValue = $('.readout__value');
 const fill = $('[data-readout-bar]');
+const shade = $('.stage__shade');
 let gaugeHeight = 0;
 
 run('gauge', () => {
@@ -132,7 +133,8 @@ function renderHud(c) {
 
   const quiet = c > 4.55;
   if (quiet !== hudQuiet) { hud.classList.toggle('is-quiet', quiet); hudQuiet = quiet; }
-  setVar(doc, '--shade', Math.max(0, Math.min(1, (c - 4.4) / 0.6)).toFixed(3));
+  // set on the shade itself: on <html> it restyled the whole page every frame
+  if (shade) setVar(shade, '--shade', Math.max(0, Math.min(1, (c - 4.4) / 0.6)).toFixed(3));
 }
 
 run('hud off', () => {
@@ -445,35 +447,99 @@ function showStill(c) {
   };
 }
 
+let sceneLost = false;    // the GPU dropped the context: stills stand in until it comes back
+let sceneEvents = null;   // aborts every listener bootScene added
+let lostTimer = 0;
+
 function enterStaticMode(reason) {
   if (staticMode) return;
   staticMode = true;
   if (reason) console.info(`[nadir] static mode: ${reason}`);
+  clearTimeout(lostTimer);
+  if (sceneEvents) { sceneEvents.abort(); sceneEvents = null; }
   stage.classList.remove('is-live');
   doc.classList.remove('want-3d');
+  hideCallouts();
   if (scene) { try { scene.dispose(); } catch (e) { /* already gone */ } scene = null; }
+  delete window.__scene;
   showStill(chapter);
 }
 
 /* ------------------------------------------------------------ callouts */
-const callouts = $$('.callout').map((el) => ({ el, anchor: el.dataset.anchor, on: Number(el.dataset.on), left: el.classList.contains('callout--left'), shown: false }));
-const calloutsAllowed = () => window.innerWidth >= 1024 && finePointer !== null;
+const callouts = $$('.callout').map((el) => {
+  const left = el.classList.contains('callout--left');
+  return { el, anchor: el.dataset.anchor, on: Number(el.dataset.on), prefer: left, left, shown: false, w: 0, h: 0 };
+});
+const calloutsAllowed = () => window.innerWidth >= 1024;
 const projected = { x: 0, y: 0, visible: false };
+
+// Labels stay on screen, below the header, and off the instrument panel and the chapter text.
+// The keep-out boxes are measured on first use and again after a resize.
+let room = null;
+window.addEventListener('resize', () => { room = null; });
+
+const grow = (r, m) => ({ l: r.left - m, t: r.top - m, r: r.right + m, b: r.bottom + m });
+const hits = (a, x0, y0, x1, y1) => !!a && x0 < a.r && x1 > a.l && y0 < a.b && y1 > a.t;
+
+function measureRoom() {
+  const box = (el) => el.getBoundingClientRect();
+  const sy = window.scrollY;
+  const g = box(gauge);
+  const tickLabels = $$('.gauge__t', gauge).map(box);
+  room = {
+    top: header.offsetHeight + 12,
+    right: window.innerWidth - 16,
+    bottom: window.innerHeight - 16,
+    hud: [
+      { l: Math.min(...tickLabels.map((r) => r.left)) - 16, t: g.top - 16, r: Infinity, b: g.bottom + 16 },
+      grow(box($('.readout')), 16),
+    ],
+    // per chapter: the name shown next to the active tick (fixed), and the chapter text (scrolls)
+    name: chapters.map((_, k) => { const n = $('.gauge__name', ticks[majorTick[Math.min(k, 4)]]); return n ? grow(box(n), 12) : null; }),
+    copy: chapters.map((sec) => {
+      const copy = $('.chapter__copy', sec);
+      if (!copy) return null;
+      const r = grow(box(copy), 20);
+      r.t += sy;
+      r.b += sy;
+      return r;
+    }),
+  };
+  for (const co of callouts) { co.w = co.el.offsetWidth; co.h = co.el.offsetHeight; }
+}
+
+function fits(co, x, y, left, sy) {
+  const x0 = left ? x - co.w : x - 4;
+  const x1 = left ? x + 4 : x + co.w;
+  const y0 = y - co.h / 2;
+  const y1 = y + co.h / 2;
+  if (x0 < 16 || x1 > room.right || y0 < room.top || y1 > room.bottom) return false;
+  if (room.hud.some((a) => hits(a, x0, y0, x1, y1)) || hits(room.name[co.on], x0, y0, x1, y1)) return false;
+  return !hits(room.copy[co.on], x0, y0 + sy, x1, y1 + sy);
+}
+
+function hideCallouts() {
+  for (const co of callouts) { co.el.classList.remove('is-on'); co.shown = false; }
+}
 
 function renderCallouts(c) {
   if (!scene || !calloutsAllowed()) return;
   for (const co of callouts) {
-    const near = Math.abs(c - co.on) < 0.22;
     let show = false;
-    if (near) {
+    if (Math.abs(c - co.on) < 0.22) {
       scene.project(co.anchor, projected);
-      show = projected.visible;
-      if (show) {
-        const x = projected.x.toFixed(1);
-        const y = projected.y.toFixed(1);
-        co.el.style.transform = co.left
-          ? `translate3d(${x}px, ${y}px, 0) translate(-100%, -50%)`
-          : `translate3d(${x}px, ${y}px, 0) translate(0, -50%)`;
+      if (projected.visible) {
+        if (!room) measureRoom();
+        const { x, y } = projected;
+        const sy = window.scrollY;
+        // keep the side it is on while it fits, else try the other side, else hide it
+        let left = co.shown ? co.left : co.prefer;
+        if (!fits(co, x, y, left, sy)) left = !left;
+        show = fits(co, x, y, left, sy);
+        if (show) {
+          if (left !== co.left) { co.el.classList.toggle('callout--left', left); co.left = left; }
+          co.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(${left ? '-100%' : '0'}, -50%)`;
+        }
       }
     }
     if (show !== co.shown) { co.el.classList.toggle('is-on', show); co.shown = show; }
@@ -484,11 +550,11 @@ function renderCallouts(c) {
 function tick() {
   chapter = director.chapterAt(scrollY());
   if (scene) scene.setChapter(chapter);
-  else shownChapter = chapter;
 
-  if (!scene) {
+  if (!scene || sceneLost) {
+    shownChapter = chapter;
     renderHud(chapter);
-    if (staticMode) showStill(chapter);
+    if (staticMode || sceneLost) showStill(chapter);
   }
 
   const nav = navTarget(shownChapter);
@@ -519,6 +585,9 @@ async function bootScene() {
   if (staticMode) { s.dispose(); return; }
   scene = s;
   window.__scene = s; // handy for QA from the console
+  sceneEvents = new AbortController();
+  const { signal } = sceneEvents;
+  const on = (target, type, fn, opts) => target.addEventListener(type, fn, { ...opts, signal });
 
   s.onFrame((c) => {
     shownChapter = c;
@@ -526,17 +595,47 @@ async function bootScene() {
     renderCallouts(c);
   });
 
-  canvas.addEventListener('contextlost', () => enterStaticMode('WebGL context lost'));
+  // Phones drop WebGL contexts under memory pressure, often while the tab is in the background.
+  // Stills stand in meanwhile, and the scene rebuilds what it needs once the browser restores the
+  // context. Only if that does not happen soon after the reader is back do the stills stay.
+  const giveUpLater = () => {
+    clearTimeout(lostTimer);
+    lostTimer = setTimeout(() => {
+      if (!sceneLost) return;
+      if (document.hidden) giveUpLater();
+      else enterStaticMode('WebGL context not restored');
+    }, 4000);
+  };
+  on(canvas, 'contextlost', () => {
+    sceneLost = true;
+    stage.classList.remove('is-live');
+    doc.classList.remove('want-3d');
+    hideCallouts();
+    shownStill = -1;
+    showStill(chapter);
+    giveUpLater();
+  });
+  on(canvas, 'contextrestored', () => {
+    clearTimeout(lostTimer);
+    if (!sceneLost || !scene) return;
+    sceneLost = false;
+    doc.classList.add('want-3d');
+    scene.setChapter(chapter);
+    scene.resize();
+    if (!document.hidden && !menuOpen) scene.start();
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (scene && !sceneLost) stage.classList.add('is-live'); }));
+  });
 
   s.setChapter(chapter);
   s.start();
   await s.firstFrame;
+  if (scene !== s || sceneLost) return;
   stage.classList.add('is-live');
   if (motion && chapter < 0.35) s.intro();
 
   if (finePointer) {
-    window.addEventListener('pointermove', (e) => {
-      s.setPointer((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+    on(window, 'pointermove', (e) => {
+      if (scene) scene.setPointer((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
     }, { passive: true });
   }
 
@@ -545,10 +644,13 @@ async function bootScene() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { if (scene) scene.resize(); }, 120);
   };
-  window.addEventListener('resize', onResize);
-  window.addEventListener('orientationchange', onResize);
+  on(window, 'resize', onResize);
+  on(window, 'orientationchange', onResize);
+  // a window dragged to a screen with another pixel density does not always fire resize
+  const watchDpr = () => on(matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`), 'change', () => { onResize(); watchDpr(); }, { once: true });
+  watchDpr();
 
-  document.addEventListener('visibilitychange', () => {
+  on(document, 'visibilitychange', () => {
     if (!scene) return;
     if (document.hidden) scene.stop();
     else if (!menuOpen) scene.start();
