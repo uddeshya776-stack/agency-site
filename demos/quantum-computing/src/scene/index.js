@@ -29,7 +29,7 @@ const PULSE_S0 = 2.12, PULSE_S1 = 5.06, PULSE_TRAVEL = 3.4, PULSE_PERIOD = 5.0, 
 const INTRO_DIM = 0.3, INTRO_MS = 2100, INTRO_AUTO_MS = 2600;
 // plate anchors: rim point at the camera's azimuth plus an offset (radians, + = screen right)
 const PLATE_ANCHORS = {
-  plate300K: [0, -0.35], plate50K: [1, -0.35], plate4K: [2, 0.3], still: [3, -0.35], coldplate: [4, -0.4], mxc: [5, -0.62],
+  plate300K: [0, -0.35], plate50K: [1, -0.35], plate4K: [2, -0.3], still: [3, -0.35], coldplate: [4, -0.4], mxc: [5, -0.62],
 };
 
 export async function createScene({ canvas, reducedMotion = false, onProgress, debug = null } = {}) {
@@ -54,9 +54,15 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
 
   // ---------------------------------------------------------------- renderer + tier
   const renderer = new THREE.WebGLRenderer({
-    canvas, antialias: false, alpha: false, stencil: false, depth: true,
+    canvas, antialias: false, alpha: false, stencil: false, depth: false,   // the scene renders to its own target
     powerPreference: 'high-performance', preserveDrawingBuffer: !!dbg.preserve,
   });
+  if (!renderer.extensions.has('EXT_color_buffer_float') && !renderer.extensions.has('EXT_color_buffer_half_float')) {
+    renderer.dispose();
+    throw new Error('createScene: half-float render targets are not supported');
+  }
+  // the shader error checks block on each link; keep them for tests and stills only
+  renderer.debug.checkShaderErrors = Object.keys(dbg).length > 0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;     // ACES + sRGB happen in the final pass
   renderer.info.autoReset = false;
@@ -66,8 +72,12 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
   const preset = presetFor(presetName, dbg.preset);
   if (dbg.grain !== undefined) preset.grain = dbg.grain;
   if (presetName === 'low') preset.iridescence = 0;
-  const msaa = presetName === 'still' ? 4 : Math.min(preset.msaa, tier.msaa);
+  if (tier.dofTaps !== undefined && presetName !== 'still') preset.dofTaps = Math.min(preset.dofTaps, tier.dofTaps);
   const finePointer = typeof matchMedia === 'function' && matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  // phone and tablet GPUs are tilers: resolving 4x half-float MSAA is mostly memory traffic and
+  // heat, so touch screens use FXAA instead
+  const msaa = presetName === 'still' ? 4 : coarse ? 0 : Math.min(preset.msaa, tier.msaa);
   slicer.step('renderer', 0.02);
   await slicer.yield('renderer');
 
@@ -110,19 +120,22 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
   // ---------------------------------------------------------------- sizing
   let cssW = 1, cssH = 1, bufW = 1, bufH = 1, dpr = 1, dprScale = 1, portrait = false;
   const sizeV = new THREE.Vector2();
-  function applySize() {
-    cssW = Math.max(1, canvas.clientWidth || window.innerWidth || 1);
-    cssH = Math.max(1, canvas.clientHeight || window.innerHeight || 1);
-    dpr = dbg.dpr !== undefined ? dbg.dpr : pixelRatioFor(tier, cssW, cssH, dprScale);
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(cssW, cssH, false);
+  // Returns false when nothing changed: reshaping the canvas clears it and reallocates every target.
+  function applySize(force = false) {
+    const w = Math.max(1, canvas.clientWidth || window.innerWidth || 1);
+    const h = Math.max(1, canvas.clientHeight || window.innerHeight || 1);
+    const r = dbg.dpr !== undefined ? dbg.dpr : pixelRatioFor(tier, w, h, dprScale);
+    if (!force && w === cssW && h === cssH && r === dpr) return false;
+    cssW = w; cssH = h; dpr = r;
+    renderer.setDrawingBufferSize(cssW, cssH, dpr);
     renderer.getDrawingBufferSize(sizeV);
     bufW = sizeV.x; bufH = sizeV.y;
     post.setSize(bufW, bufH);
     portrait = dbg.portrait !== undefined ? !!dbg.portrait : isPortraitLayout(cssW, cssH);
     fx.bgMat.uniforms.uRes.value.set(bufW, bufH);
+    return true;
   }
-  applySize();
+  applySize(true);
 
   // ---------------------------------------------------------------- state
   const chap = { x: 0, v: 0 };
@@ -325,6 +338,9 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
   }
 
   // ---------------------------------------------------------------- upload + compile
+  // anisotropic filtering: worth it on the high tier, where plates are seen at grazing angles
+  const ANISO = { mid: 2, low: 1 };
+  if (ANISO[presetName]) for (const t of [...machine.textures, ...chip.textures]) t.anisotropy = Math.min(t.anisotropy, ANISO[presetName]);
   slicer.step('upload', 0.86);
   for (const t of [...machine.textures, ...chip.textures]) {
     renderer.initTexture(t);
@@ -348,7 +364,7 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
   }
   await renderer.compileAsync(scene, camera);       // waits for parallel compilation to finish
   renderer.setRenderTarget(null);
-  await post.compile();
+  await post.compile(() => slicer.maybeYield('post'));
   await slicer.yield('compile done');
 
   // upload vertex buffers one object at a time (render each alone into a tiny target)
@@ -399,6 +415,10 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
   function tick(now) {
     if (!running) return;
     raf = requestAnimationFrame(tick);
+    // pacing: at most one frame per 10 ms, so 120 Hz panels run at 60; on touch screens, 30 fps
+    // while the camera rests, which keeps phones cool enough not to throttle
+    const resting = coarse && intro.state === 'done' && Math.abs(chap.v) < 1e-3 && Math.abs(target - chap.x) < 1e-3;
+    if (last && now - last < (resting ? 30 : 10)) return;
     const dtMs = last ? now - last : 16.7;
     last = now;
     if (snap) {
@@ -406,7 +426,7 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
       chap.x = target; chap.v = 0;
       if (intro.state === 'dim' && target >= 0.35) intro.state = 'done';
     }
-    if (governor) governor.sample(dtMs, now);
+    if (governor && !resting) governor.sample(dtMs, now);
     const dt = fixedDt !== undefined ? fixedDt : Math.min(0.1, Math.max(0, dtMs / 1000));
     update(dt, now);
     render();
@@ -433,7 +453,7 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
     envRT.dispose();
     envRT = buildStudioEnvironment(renderer, { size: preset.env });
     scene.environment = envRT.texture;
-    applySize();
+    applySize(true);
     canvas.dispatchEvent(new CustomEvent('contextrestored'));
   };
   canvas.addEventListener('webglcontextlost', onLost, false);
@@ -463,7 +483,7 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
     }
     if (name === 'attenuator') return out.copy(attAnchor);
     if (name === 'circulator') return out.copy(circAnchor);
-    if (name === 'chip') return out.copy(chip.center);
+    if (name === 'chip') return out.copy(chip.center).addScaledVector(chip.right, -0.5 * chip.dieW); // the die's left edge
     return null;
   }
 
@@ -481,9 +501,9 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
       ptr.ty = clamp(+y || 0, -1, 1);
     },
     resize() {
-      if (disposed) return;
-      applySize();
-      if (!running && frames > 0 && !lost) { update(0, performance.now()); render(); }
+      if (disposed || lost || !applySize()) return;
+      last = 0;   // the reshaped canvas is blank: draw the next frame even while paced
+      if (!running && frames > 0) { update(0, performance.now()); render(); }
     },
     start() {
       if (running || disposed || lost) return;
@@ -551,7 +571,10 @@ export async function createScene({ canvas, reducedMotion = false, onProgress, d
           x.dispose();
         });
       });
-      for (const t of [...machine.textures, ...chip.textures]) t.dispose();
+      for (const t of [...machine.textures, ...chip.textures]) {
+        t.dispose();
+        if (t.image && typeof t.image.getContext === 'function') t.image.width = t.image.height = 0;   // free the canvas memory now
+      }
       envRT.dispose();
       post.dispose();
       renderer.dispose();

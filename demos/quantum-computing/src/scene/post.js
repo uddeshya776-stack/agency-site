@@ -149,13 +149,21 @@ export function createPost(renderer, scene, camera, { preset, msaa }) {
   const dofTaps = preset.dofTaps | 0;
   const levels = preset.bloomLevels | 0;
   const div = preset.bloomDiv || 2;
-  const samples = Math.min(msaa | 0, renderer.capabilities.maxSamples || 4);
+  // MAX_SAMPLES can exceed what the half-float format supports: ask the format itself
+  let formatSamples = 0;
+  try {
+    const gl = renderer.getContext();
+    const list = gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA16F, gl.SAMPLES);
+    formatSamples = list && list.length ? list[0] : 0;
+  } catch (e) { formatSamples = 0; }
+  const samples = Math.min(msaa | 0, renderer.capabilities.maxSamples || 4, formatSamples);
   let W = 4, H = 4;
 
   const depthTexture = dofTaps > 0 ? new THREE.DepthTexture(4, 4) : null;
   const sceneRT = new THREE.WebGLRenderTarget(4, 4, {
     type: THREE.HalfFloatType, samples, depthBuffer: true, stencilBuffer: false,
     minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
+    resolveDepthBuffer: !!depthTexture,   // only depth of field reads the depth
     ...(depthTexture ? { depthTexture } : {}),
   });
   const mk = () => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false });
@@ -224,7 +232,9 @@ export function createPost(renderer, scene, camera, { preset, msaa }) {
     renderBloom() {
       if (!bloomOn) { U.tBloom.value = black; return; }
       prefilter.uniforms.tSrc.value = sceneRT.texture;
-      prefilter.uniforms.uTexel.value.set(1 / W, 1 / H);
+      // taps at the centres of the four quadrants of each div x div block, so every source
+      // pixel counts (with +-0.5 texel taps a quarter-res bloom read 4 of 16 and sparkled)
+      prefilter.uniforms.uTexel.value.set(div / (2 * W), div / (2 * H));
       pass(prefilter, down[0]);
       for (let i = 1; i < levels; i++) {
         downM.uniforms.tSrc.value = down[i - 1].texture;
@@ -273,12 +283,19 @@ export function createPost(renderer, scene, camera, { preset, msaa }) {
       copyM.uniforms.uDither.value = dither;
       pass(copyM, null);
     },
-    /* Compile every pass program up front (raw shaders: target-independent). */
-    async compile() {
+    /* Compile every pass program up front (raw shaders: target-independent), and draw each once
+       off screen: without KHR_parallel_shader_compile the link otherwise lands in the first
+       visible frame. pause() lets the caller yield between passes. */
+    async compile(pause) {
+      const tiny = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
       for (const m of [prefilter, downM, upM, finalM, copyM]) {
         quad.material = m;
         await renderer.compileAsync(quad, quadCam);
+        pass(m, tiny);
+        if (pause) await pause();
       }
+      renderer.setRenderTarget(null);
+      tiny.dispose();
     },
     dispose() {
       sceneRT.dispose(); if (depthTexture) depthTexture.dispose();
