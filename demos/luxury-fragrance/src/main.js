@@ -494,7 +494,7 @@ function splitReveal(scope = document) {
   $$('[data-split]', scope).forEach((el) => {
     if (el.dataset.splitDone) return;
     el.dataset.splitDone = '1';
-    const st = new SplitText(el, { type: 'lines', linesClass: 'line', mask: 'lines' });
+    const st = new SplitText(el, { type: 'lines', linesClass: 'line', mask: 'lines', aria: 'none' });
     gsap.from(st.lines, { yPercent: 110, duration: 1.3, ease: 'expo.out', stagger: 0.09, scrollTrigger: { trigger: el, start: 'top 88%' } });
   });
 }
@@ -613,7 +613,7 @@ function intro() {
 }
 function heroIn() {
   if (!motion || currentView !== 'home') return;
-  const st = new SplitText($('[data-hero-title]'), { type: 'lines', linesClass: 'line', mask: 'lines' });
+  const st = new SplitText($('[data-hero-title]'), { type: 'lines', linesClass: 'line', mask: 'lines', aria: 'none' });
   gsap.from(st.lines, { yPercent: 115, duration: 1.6, ease: 'expo.out', stagger: 0.12, delay: 0.15 });
   gsap.from(['[data-hero-eyebrow]', '[data-hero-lede]', '[data-hero-ctas]', '[data-hero-scroll]'], { opacity: 0, y: 24, duration: 1.4, ease: 'expo.out', stagger: 0.1, delay: 0.45, clearProps: 'transform' });
 }
