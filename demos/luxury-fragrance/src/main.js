@@ -28,7 +28,7 @@ document.addEventListener('error', (e) => { if (e.target.tagName === 'IMG') e.ta
 /* ------------------------------------------------------------------ smooth scroll */
 let lenis = null;
 if (motion) {
-  lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9, smoothWheel: true });
+  lenis = new Lenis({ lerp: 0.13, wheelMultiplier: 1, smoothWheel: true });
   lenis.on('scroll', ScrollTrigger.update);
   gsap.ticker.add((t) => lenis.raf(t * 1000));
   gsap.ticker.lagSmoothing(0);
@@ -284,7 +284,13 @@ function updateHeader() {
   else if (y < lastY - 4 || y < 400) header.classList.remove('is-hidden');
   lastY = y;
 }
-window.addEventListener('scroll', updateHeader, { passive: true });
+// one header update per frame, however many scroll events arrive
+let headerQueued = false;
+window.addEventListener('scroll', () => {
+  if (headerQueued) return;
+  headerQueued = true;
+  requestAnimationFrame(() => { headerQueued = false; updateHeader(); });
+}, { passive: true });
 
 /* ------------------------------------------------------------------ mega menu */
 const megaBtn = $('[data-mega-btn]');
@@ -555,9 +561,9 @@ function collection() {
   detail.innerHTML = SCENTS.map((s) => `<div class="col-detail">
       <p class="col-detail__mood">${s.line} ${s.mood}.</p>
       <dl class="notes-row"><div><dt>Top</dt><dd>${s.notes.top.join(', ')}</dd></div><div><dt>Heart</dt><dd>${s.notes.heart.join(', ')}</dd></div><div><dt>Base</dt><dd>${s.notes.base.join(', ')}</dd></div></dl>
-      <div class="col-detail__buy"><span class="col-detail__price"><span data-money="${s.price[50]}">${money(s.price[50])}</span><small>50 ml</small></span>
-        <button class="btn btn--light" type="button" data-quick="${s.id}">Add to bag</button>
-        <a class="link-u col-detail__more" href="#/product/${s.id}">Discover</a></div>
+      <div class="col-detail__buy">
+        <button class="btn btn--light col-detail__add" type="button" data-quick="${s.id}" aria-label="Add ${s.name}, 50 ml, to bag"><span>Add to bag</span><span class="col-detail__price"><span data-money="${s.price[50]}">${money(s.price[50])}</span><small>50 ml</small></span></button>
+        <a class="btn btn--ghost-light col-detail__more" href="#/product/${s.id}">Discover</a></div>
     </div>`).join('');
   renderCollectionPrices = () => $$('[data-money]', detail).forEach((el) => { el.textContent = money(Number(el.dataset.money)); });
   dots.innerHTML = SCENTS.map((s, i) => `<li><button type="button" data-dot="${i}" aria-label="${s.name}"><span>${s.name}</span><i></i></button></li>`).join('');
@@ -680,7 +686,9 @@ window.addEventListener('hashchange', () => route());
   stage.boot();
   // the 3D stage only runs while the hero or the collection is on screen
   const shop = $('#shop');
-  const vis = () => stage.setVisible(currentView === 'home' && window.scrollY < shop.offsetTop + 2);
+  let shopTop = shop.offsetTop;
+  ScrollTrigger.addEventListener('refresh', () => { shopTop = shop.offsetTop; });
+  const vis = () => stage.setVisible(currentView === 'home' && window.scrollY < shopTop + 2);
   window.addEventListener('scroll', vis, { passive: true });
   vis();
   window.addEventListener('pointermove', (e) => stage.pointer(e.clientX / innerWidth * 2 - 1, e.clientY / innerHeight * 2 - 1), { passive: true });

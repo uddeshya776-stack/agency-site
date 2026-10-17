@@ -35,13 +35,13 @@ export function cardHTML(p, { sizes = '(min-width: 1100px) 23vw, (min-width: 900
     ${badge && p.badge ? `<span class="card__tag">${p.badge}</span>` : ''}
     <button type="button" class="card__wish" data-wish="${p.id}" aria-pressed="${wished}" aria-label="${wished ? 'Remove from' : 'Save to'} wishlist: ${esc(name)}">${heart}</button>
     <a class="card__media" href="${href}" aria-label="${esc(name)}${selS ? ', ' + selS.name : ''}">${media}${glow}</a>
-    ${quick}
     <div class="card__info">
       <span class="card__type">${p.type}</span>
       <h3 class="card__name"><a href="${href}">${s ? `<span class="card__swatch" style="background:${s.liquid}"></span>` : ''}${esc(name)}</a></h3>
       <span class="card__price">${p.id === 'giftcard' ? 'from ' + money(50) : (p.sizes ? 'from ' : '') + money(fromPrice(p))}</span>
       <p class="card__mood" data-card-mood>${s ? s.mood : selS ? `In ${selS.name}` : p.desc}</p>
       ${swatches}
+      ${quick}
     </div>
   </article>`;
 }

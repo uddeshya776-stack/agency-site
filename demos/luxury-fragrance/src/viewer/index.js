@@ -512,7 +512,6 @@ export async function createBottleViewer({ canvas, mode = 'hero', scent = 'ambre
 
   function busy() {
     if (dirty || intro.state !== 'done' || scentAnim.active || drag.active) return true;
-    if (!reducedMotion && !pdp) return true;   // the hero breathes
     if (Math.abs(prog.x - progTarget) > 1e-4 || Math.abs(prog.v) > 1e-4) return true;
     if (Math.abs(sizeS.x - sizeS.target) > 1e-4 || Math.abs(sizeS.v) > 1e-4) return true;
     if (Math.abs(ptr.x - ptr.tx) > 1e-4 || Math.abs(ptr.y - ptr.ty) > 1e-4) return true;
@@ -520,6 +519,7 @@ export async function createBottleViewer({ canvas, mode = 'hero', scent = 'ambre
     for (const k of ['x', 'y', 's']) if (Math.abs(frm[k].x - frmT[k]) > 1e-4 || Math.abs(frm[k].v) > 1e-4) return true;
     if (pdp && (Math.abs(drag.yawV) > 1e-4 || Math.abs(drag.elevV) > 1e-4 || Math.abs(drag.elev) > 1e-4)) return true;
     if (pdp && Math.abs(drag.yaw - Math.round(drag.yaw / (2 * Math.PI)) * 2 * Math.PI) > 1e-4) return true;
+    if (!reducedMotion && !pdp) return 2;      // only the slow hero breathing: 30 fps is enough
     return false;
   }
 
@@ -614,6 +614,7 @@ export async function createBottleViewer({ canvas, mode = 'hero', scent = 'ambre
   });
   post.setEnabled(governor ? governor.post : tier.post !== false);
 
+  let idleAcc = 0;
   function tick(now) {
     if (!running) return;
     raf = requestAnimationFrame(tick);
@@ -621,9 +622,17 @@ export async function createBottleViewer({ canvas, mode = 'hero', scent = 'ambre
     const dtMs = last ? now - last : 16.7;
     last = now;
     const dt = Math.min(0.1, Math.max(0, dtMs / 1000));
-    if (!busy()) { clock += dt; return; }
-    if (governor) governor.sample(dtMs, now);
-    update(dt);
+    const b = busy();
+    if (!b) { clock += dt; idleAcc = 0; return; }
+    let step = dt + idleAcc / 1000;
+    if (b === 2) {
+      // breathing alone: render at about 30 fps to free the GPU and keep scrolling smooth
+      if (idleAcc + dtMs < 30) { idleAcc += dtMs; return; }
+    }
+    idleAcc = 0;
+    step = Math.min(0.1, step);
+    if (governor && b !== 2) governor.sample(dtMs, now);
+    update(step);
     render();
     frames++;
     if (frames === 1) {
