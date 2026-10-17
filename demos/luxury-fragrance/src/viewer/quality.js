@@ -3,8 +3,8 @@
    times and trades resolution (then post effects) for a steady frame rate. */
 
 export const TIERS = {
-  high: { name: 'high', maxDpr: 2, pixelBudget: 3.4e6, minScale: 0.55, post: true, msaa: 4, detail: 1 },
-  mid: { name: 'mid', maxDpr: 1.5, pixelBudget: 1.9e6, minScale: 0.6, post: true, msaa: 4, detail: 0.7 },
+  high: { name: 'high', maxDpr: 1.75, pixelBudget: 2.6e6, minScale: 0.55, post: true, msaa: 4, detail: 1 },
+  mid: { name: 'mid', maxDpr: 1.5, pixelBudget: 1.6e6, minScale: 0.6, post: true, msaa: 4, detail: 0.7 },
   low: { name: 'low', maxDpr: 1.25, pixelBudget: 1.1e6, minScale: 0.65, post: false, msaa: 0, detail: 0.45 },
 };
 
@@ -36,7 +36,7 @@ export function detectTier(gl) {
   if (saveData || (mem !== undefined && mem <= 2) || LOW_GPU.test(gpu)) tier = 'low';
   else if (tier === 'high' && DESK_MID.test(gpu)) tier = 'mid';
   // Iris Xe keeps high, with a smaller frame and fewer depth of field taps
-  if (tier === 'high' && /intel/i.test(gpu) && !/\barc\b/i.test(gpu)) return { ...TIERS.high, pixelBudget: 2.4e6, dofTaps: 10 };
+  if (tier === 'high' && /intel/i.test(gpu) && !/\barc\b/i.test(gpu)) return { ...TIERS.high, pixelBudget: 1.8e6, dofTaps: 8 };
   return TIERS[tier];
 }
 
