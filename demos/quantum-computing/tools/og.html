@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Link preview card (1200x630). Rendered to assets/img/og-image.jpg by tools/og.mjs. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nadir link preview</title>
+<style>
+  @font-face { font-family: 'Mona Sans'; src: url('../assets/fonts/mona-sans-wght.woff2') format('woff2'); font-weight: 200 900; }
+  @font-face { font-family: 'Mona Sans Readout'; src: url('../assets/fonts/mona-sans-readout.woff2') format('woff2'); font-weight: 200 900; font-stretch: 75% 125%; }
+  html, body { margin: 0; background: #05070b; }
+  .card { position: relative; width: 1200px; height: 630px; overflow: hidden; color: #e8eef5; font-family: 'Mona Sans', system-ui, sans-serif; }
+  .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--pos, 70% 50%); }
+  .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(5,7,11,.92) 0%, rgba(5,7,11,.72) 34%, rgba(5,7,11,0) 62%); }
+  .brand { position: absolute; left: 64px; top: 56px; display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 500; letter-spacing: .01em; }
+  .brand svg { width: 34px; height: 34px; color: #d9b36c; }
+  h1 { position: absolute; left: 64px; bottom: 132px; margin: 0; width: 520px; font-size: 62px; line-height: 1.02; font-weight: 300; letter-spacing: -.02em; }
+  .meta { position: absolute; left: 64px; bottom: 64px; display: flex; align-items: baseline; gap: 18px; color: rgba(232,238,245,.66); font-size: 19px; }
+  .meta b { font-family: 'Mona Sans Readout', 'Mona Sans', sans-serif; font-weight: 300; font-stretch: 75%; color: #9be3ff; font-size: 30px; letter-spacing: .01em; }
+  .meta i { font-style: normal; color: rgba(155,227,255,.75); font-size: 18px; margin-left: -12px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <img class="bg" alt="">
+  <div class="shade"></div>
+  <div class="brand">
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 7h22M9 13h14M13 19h6"/><circle cx="16" cy="25.5" r="2.25" fill="#9be3ff" stroke="none"/></svg>
+    Nadir
+  </div>
+  <h1>Computing begins where heat ends.</h1>
+  <div class="meta"><b>9.8</b><i>mK</i><span>Quantum computing, ten millikelvin down</span></div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const img = document.querySelector('.bg');
+  if (q.get('pos')) document.querySelector('.card').style.setProperty('--pos', q.get('pos'));
+  img.onload = img.onerror = () => document.fonts.ready.then(() => { window.__done = true; });
+  img.src = q.get('bg') || '../assets/img/poster-0-1920.webp';
+</script>
+</body>
+</html>
