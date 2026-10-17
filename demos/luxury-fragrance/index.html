@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ilvère | Extraits de Parfum, Paris</title>
+  <meta name="description" content="Ilvère is a Paris fragrance house. Five extraits de parfum at 24%, macerated for eight weeks, in heavy glass with a cap of black onyx. Complimentary engraving.">
+  <meta name="theme-color" content="#14110F">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://uddeshya776-stack.github.io/agency-site/demos/luxury-fragrance/">
+  <meta property="og:title" content="Ilvère | Extraits de Parfum, Paris">
+  <meta property="og:description" content="Five extraits de parfum, written slowly in Paris. Heavy glass, a cap of black onyx, complimentary engraving.">
+  <meta property="og:image" content="https://uddeshya776-stack.github.io/agency-site/demos/luxury-fragrance/assets/img/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preload" href="assets/fonts/cormorant-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/instrument-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    (function (d) {
+      var c = d.documentElement.classList;
+      c.remove('no-js'); c.add('js');
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      c.add('motion');
+      try { if (!sessionStorage.getItem('ilvere-intro')) c.add('is-intro'); } catch (e) {}
+    })(document);
+  </script>
+  <script type="module" src="assets/js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- intro curtain -->
+  <div class="preloader" aria-hidden="true" data-preloader>
+    <div class="preloader__word" data-preloader-word>
+      <span>I</span><span>L</span><span>V</span><span>È</span><span>R</span><span>E</span>
+    </div>
+    <div class="preloader__drop"><i data-progress></i></div>
+    <p class="preloader__tag">Maison de Parfum · Paris</p>
+  </div>
+
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="announce" data-announce>
+    <div class="announce__track">
+      <p>Complimentary shipping over <span data-money="150">$150</span> and free returns</p>
+      <p>Complimentary engraving and two samples with every order</p>
+      <p>Pay in 4 with Klarna or Afterpay</p>
+    </div>
+  </div>
+
+  <header class="site-header" data-header>
+    <div class="site-header__inner">
+      <nav class="site-nav" aria-label="Primary">
+        <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu" data-menu-btn><span></span><span></span><span class="sr-only">Menu</span></button>
+        <button class="nav-link" type="button" aria-expanded="false" aria-controls="mega" data-mega-btn>Shop</button>
+        <a class="nav-link" href="#/shop/fragrance">Fragrance</a>
+        <a class="nav-link" href="#/shop/home">Home</a>
+        <a class="nav-link" href="#/shop/gifts">Gifts</a>
+        <a class="nav-link" href="#finder" data-nav>Scent finder</a>
+      </nav>
+      <a class="brand" href="#/" aria-label="Ilvère, home" data-home>
+        <span class="brand__word">ILVÈRE</span>
+        <span class="brand__sub">Paris · 1921</span>
+      </a>
+      <div class="site-tools">
+        <button class="tool-link hide-sm" type="button" data-region-open aria-label="Change country and currency"><span data-cur-label>USD $</span></button>
+        <button class="icon-btn" type="button" data-search-open aria-label="Search">
+          <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+        </button>
+        <a class="icon-btn wish-btn hide-sm" href="#/shop/wishlist" aria-label="Wishlist" data-wish-link>
+          <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/></svg>
+          <span class="wish-btn__count" data-wish-count hidden>0</span>
+        </a>
+        <button class="bag-btn" type="button" data-bag-open aria-label="Open bag, 0 items">
+          <span class="bag-btn__label">Bag</span>
+          <span class="bag-btn__count" data-bag-count>0</span>
+        </button>
+      </div>
+    </div>
+    <div class="mega" id="mega" data-mega hidden>
+      <div class="mega__inner">
+        <div class="mega__col">
+          <h3><a href="#/shop/fragrance">Fragrance</a></h3>
+          <ul data-mega-scents></ul>
+          <a class="mega__all" href="#/shop/fragrance">Travel sprays</a>
+        </div>
+        <div class="mega__col">
+          <h3><a href="#/shop/home">Home</a></h3>
+          <ul><li><a href="#/product/candle">Scented candles</a></li><li><a href="#/product/diffuser">Room diffusers</a></li><li><a href="#refill" data-nav>Refills</a></li></ul>
+          <h3><a href="#/shop/body">Body</a></h3>
+          <ul><li><a href="#/product/cream">Body cream</a></li><li><a href="#/product/wash">Hand &amp; body wash</a></li></ul>
+        </div>
+        <div class="mega__col">
+          <h3><a href="#/shop/gifts">Gifts</a></h3>
+          <ul><li><a href="#/product/discovery">The Discovery Set</a></li><li><a href="#/product/giftcard">E-gift cards</a></li><li><a href="#gifts" data-nav>Gifts by budget</a></li><li><a href="#/shop/all">Shop everything</a></li></ul>
+          <h3>Services</h3>
+          <ul><li><a href="#finder" data-nav>Scent finder</a></li><li><a href="#boutiques" data-nav>Book a consultation</a></li></ul>
+        </div>
+        <a class="mega__feature" href="#/product/discovery">
+          <span class="mega__feature-img">
+            <picture><source type="image/avif" srcset="assets/img/discovery-640.avif"><img src="assets/img/discovery-640.webp" alt="" width="640" height="800" loading="lazy"></picture>
+          </span>
+          <span class="eyebrow">Start here</span>
+          <span class="mega__feature-title">The Discovery Set</span>
+          <span class="mega__feature-sub">Five extraits, credited on your first bottle.</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="menu" id="menu" hidden data-menu>
+    <nav aria-label="Mobile">
+      <a href="#/shop/all">Shop all</a>
+      <a href="#/shop/fragrance">Fragrance</a>
+      <a href="#/shop/home">Home</a>
+      <a href="#/shop/body">Body</a>
+      <a href="#/shop/gifts">Gifts</a>
+      <a href="#finder" data-nav>Scent finder</a>
+      <a href="#boutiques" data-nav>Boutiques</a>
+    </nav>
+    <div class="menu__foot">
+      <button type="button" class="tool-link" data-region-open>Shipping to <span data-cur-country>United States</span> · <span data-cur-label>USD $</span></button>
+      <a href="#/shop/wishlist" class="tool-link">Wishlist</a>
+    </div>
+  </div>
+
+  <!-- search -->
+  <div class="search" data-search hidden role="dialog" aria-modal="true" aria-label="Search">
+    <div class="search__bar container">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+      <label class="sr-only" for="q">Search the store</label>
+      <input id="q" type="search" placeholder="Search fragrances, candles, notes…" autocomplete="off" data-search-input>
+      <button class="icon-btn" type="button" data-search-close aria-label="Close search"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    </div>
+    <div class="search__body container" data-search-body aria-live="polite"></div>
+  </div>
+
+  <!-- country + currency -->
+  <div class="region" data-region hidden role="dialog" aria-modal="true" aria-labelledby="region-title">
+    <div class="region__scrim" data-region-close></div>
+    <div class="region__panel">
+      <h2 id="region-title">Shipping to</h2>
+      <p>Prices, duties and delivery times update for your country.</p>
+      <div class="region__list" data-region-list></div>
+    </div>
+  </div>
+
+  <!-- the live 3D bottle, fixed behind the hero and the collection -->
+  <div class="stage" aria-hidden="true" data-stage>
+    <picture class="stage__poster" data-stage-poster>
+      <source type="image/avif" srcset="assets/img/card-ambre-960.avif">
+      <img src="assets/img/card-ambre-960.webp" alt="" width="1440" height="1800">
+    </picture>
+    <canvas class="stage__canvas" data-stage-canvas></canvas>
+    <div class="stage__glow" data-stage-glow></div>
+  </div>
+
+  <main id="main">
+    <!-- ================================================================ HOME -->
+    <div class="view view--home" data-view="home">
+
+      <section class="hero" id="top" data-hero>
+        <div class="hero__pin" data-hero-pin>
+          <div class="hero__copy container">
+            <p class="eyebrow" data-hero-eyebrow>Extraits de Parfum · Paris</p>
+            <h1 class="hero__title" data-hero-title>Perfume,<br><em>written slowly.</em></h1>
+            <p class="hero__lede" data-hero-lede>Five extraits at twenty-four percent, macerated for eight weeks and poured into heavy glass by hand.</p>
+            <div class="hero__ctas" data-hero-ctas>
+              <a class="btn btn--light" href="#shop" data-nav>Shop the collection</a>
+              <a class="btn btn--ghost-light" href="#finder" data-nav>Find your scent</a>
+            </div>
+          </div>
+          <ol class="hero__captions" data-captions>
+            <li data-caption="0"><span>01</span>Heavy glass, poured and polished by hand in Normandy.</li>
+            <li data-caption="1"><span>02</span>A cap of black onyx, cut from a single stone.</li>
+            <li data-caption="2"><span>03</span>Twenty-four percent concentration. Eight weeks of patience.</li>
+          </ol>
+          <div class="hero__scroll" data-hero-scroll><span>Scroll</span><i></i></div>
+        </div>
+      </section>
+
+      <section class="collection" id="collection" data-collection aria-labelledby="collection-title">
+        <div class="collection__pin" data-collection-pin>
+          <h2 class="sr-only" id="collection-title">The Collection</h2>
+          <div class="collection__inner container">
+            <div class="collection__copy">
+              <p class="eyebrow eyebrow--light">The Collection <span data-col-index>01</span> / 05</p>
+              <div class="collection__names" data-col-names></div>
+              <div class="collection__detail" data-col-detail></div>
+            </div>
+            <ol class="collection__dots" data-col-dots aria-label="Scents"></ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="shop section" id="shop" aria-labelledby="shop-title">
+        <div class="container">
+          <header class="section-head section-head--row">
+            <div>
+              <p class="eyebrow">Shop by category</p>
+              <h2 class="section-title" id="shop-title" data-split>Everything we make, <em>in five scents.</em></h2>
+            </div>
+            <a class="link-u cta-link" href="#/shop/all">Shop everything</a>
+          </header>
+          <div class="cats" data-cats></div>
+        </div>
+      </section>
+
+      <section class="best section" aria-labelledby="best-title">
+        <div class="container">
+          <header class="section-head section-head--row">
+            <div>
+              <p class="eyebrow">Bestsellers</p>
+              <h2 class="section-title" id="best-title" data-split>The extraits. <em>One of them is yours.</em></h2>
+            </div>
+            <a class="link-u cta-link" href="#/shop/fragrance">Shop fragrance</a>
+          </header>
+          <div class="grid" data-grid></div>
+        </div>
+      </section>
+
+      <section class="lineup" aria-label="The five bottles">
+        <div class="lineup__media" data-parallax>
+          <picture>
+            <source type="image/avif" srcset="assets/img/lineup-1280.avif 1280w, assets/img/lineup-1920.avif 1920w, assets/img/lineup-2560.avif 2560w" sizes="100vw">
+            <img src="assets/img/lineup-1920.webp" srcset="assets/img/lineup-1280.webp 1280w, assets/img/lineup-1920.webp 1920w, assets/img/lineup-2560.webp 2560w" sizes="100vw" alt="The five Ilvère bottles in a row on a travertine plinth, each liquid a different colour." width="2560" height="1100" loading="lazy" decoding="async">
+          </picture>
+        </div>
+        <blockquote class="lineup__quote container">
+          <p data-split>“We do not make perfume for a season. We make it for the way you remember a place.”</p>
+          <footer>Hélène Marchetti, fourth-generation perfumer of the house</footer>
+        </blockquote>
+      </section>
+
+      <section class="finder section" id="finder" aria-labelledby="finder-title" data-finder>
+        <div class="container finder__inner">
+          <header class="finder__head">
+            <p class="eyebrow">Scent finder</p>
+            <h2 class="section-title" id="finder-title">Find your scent <em>in three questions.</em></h2>
+            <p class="section-lede">No notes, no jargon. Tell us where you would rather be and we will pour you the right bottle.</p>
+          </header>
+          <div class="finder__card" data-finder-card aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="gifts section" id="gifts" aria-labelledby="gifts-title">
+        <div class="container">
+          <header class="section-head section-head--row">
+            <div>
+              <p class="eyebrow">Gifting</p>
+              <h2 class="section-title" id="gifts-title" data-split>Gifts, wrapped by hand <em>and sent at the right hour.</em></h2>
+            </div>
+            <div class="budget" role="group" aria-label="Gifts by budget" data-budget></div>
+          </header>
+          <div class="grid grid--4" data-gift-grid></div>
+          <ul class="gift-perks">
+            <li><b>Signature wrapping</b> Black paper, a wax seal, and a card written in our atelier.</li>
+            <li><b>Send it later</b> Choose the delivery day, or send an e-gift card by email.</li>
+            <li><b>Corporate gifting</b> Engraved bottles for teams and clients, from 20 pieces.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="maison section section--dark" id="maison" aria-labelledby="maison-title">
+        <div class="container maison__grid">
+          <div class="maison__media" data-reveal-img>
+            <picture>
+              <source type="image/avif" srcset="assets/img/atelier-1280.avif 1280w, assets/img/atelier-1920.avif 1920w, assets/img/atelier-2560.avif 2560w" sizes="(min-width: 900px) 58vw, 100vw">
+              <img src="assets/img/atelier-1280.webp" srcset="assets/img/atelier-1280.webp 1280w, assets/img/atelier-1920.webp 1920w, assets/img/atelier-2560.webp 2560w" sizes="(min-width: 900px) 58vw, 100vw" alt="Still life in the atelier: glass beakers, paper scent strips, amber resin and iris roots on stone in raking light." width="2560" height="1440" loading="lazy" decoding="async">
+            </picture>
+          </div>
+          <div class="maison__copy">
+            <p class="eyebrow eyebrow--light">The Maison</p>
+            <h2 class="section-title" id="maison-title" data-split>A century in the Marais, <em>and still in no hurry.</em></h2>
+            <p>Ilvère opened in 1921 as a perfumer's workshop on rue de Turenne. Four generations later the extraits are still composed and macerated there, then bottled by hand for our boutiques in Paris, London, New York and beyond.</p>
+            <p>We work with growers rather than brokers, pay for the slow materials (orris that rests for three years, vanilla cured by hand) and refuse to rush a maceration because a launch date says so.</p>
+            <dl class="stats">
+              <div><dt>Years in the Marais</dt><dd><span data-count-to="105">105</span></dd></div>
+              <div><dt>Boutiques worldwide</dt><dd><span data-count-to="48">48</span></dd></div>
+              <div><dt>Weeks of maceration</dt><dd><span data-count-to="8">8</span></dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section class="refill" id="refill" aria-labelledby="refill-title">
+        <div class="container refill__grid">
+          <div>
+            <p class="eyebrow">Refill &amp; Maison Circle</p>
+            <h2 class="refill__title" id="refill-title">Keep the bottle. <em>We refill it.</em></h2>
+          </div>
+          <ul class="refill__list">
+            <li><span>01</span><b>Refill in boutique</b> Bring any bottle back for a refill at 30% less, poured in front of you.</li>
+            <li><span>02</span><b>Refills by post</b> Candle, diffuser and body refills ship in recycled card, no plastic.</li>
+            <li><span>03</span><b>Maison Circle</b> Earn points on every order, early access to new batches and a gift on your birthday.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="discovery section" id="discovery" aria-labelledby="discovery-title">
+        <div class="container discovery__grid">
+          <div class="discovery__copy">
+            <p class="eyebrow">Start here</p>
+            <h2 class="section-title" id="discovery-title" data-split>The Discovery Set, <em>five evenings, five extraits.</em></h2>
+            <p class="section-lede">Five 2 ml vials in a black lacquered case. Wear one each night, then choose your bottle. The full <span data-money="42">$42</span> comes back as credit on your first 50 ml.</p>
+            <ul class="ticks">
+              <li>All five extraits, 2 ml each</li>
+              <li><span data-money="42">$42</span> credited towards a full bottle</li>
+              <li>Ships in 24 hours, letterbox friendly</li>
+            </ul>
+            <button class="btn btn--dark" type="button" data-quick="discovery">Add the set · <span data-money="42">$42</span></button>
+          </div>
+          <div class="discovery__media" data-reveal-img>
+            <picture>
+              <source type="image/avif" srcset="assets/img/discovery-640.avif 640w, assets/img/discovery-960.avif 960w, assets/img/discovery-1440.avif 1440w" sizes="(min-width: 900px) 45vw, 100vw">
+              <img src="assets/img/discovery-960.webp" srcset="assets/img/discovery-640.webp 640w, assets/img/discovery-960.webp 960w, assets/img/discovery-1440.webp 1440w" sizes="(min-width: 900px) 45vw, 100vw" alt="The Discovery Set: a black lacquered case holding five glass vials, each a different colour, on linen." width="1440" height="1800" loading="lazy" decoding="async">
+            </picture>
+          </div>
+        </div>
+      </section>
+
+      <section class="boutiques section section--dark" id="boutiques" aria-labelledby="boutiques-title">
+        <div class="container boutiques__grid">
+          <div class="boutiques__head">
+            <p class="eyebrow eyebrow--light">Boutiques</p>
+            <h2 class="section-title" id="boutiques-title" data-split>Come and smell it <em>in person.</em></h2>
+            <p>Book a private consultation with one of our perfumers: forty-five minutes, every extrait on the skin, and a complimentary engraving if you leave with a bottle.</p>
+            <a class="btn btn--light" href="#boutiques" data-book>Book a consultation</a>
+          </div>
+          <ul class="boutiques__list" data-boutiques></ul>
+        </div>
+      </section>
+
+      <section class="voices section" aria-labelledby="voices-title">
+        <div class="container">
+          <header class="section-head section-head--center">
+            <p class="eyebrow">From our clients</p>
+            <h2 class="section-title" id="voices-title">4.9 out of 5, <em>from 18,400 reviews.</em></h2>
+          </header>
+          <div class="voices__track" data-voices>
+            <figure class="voice"><div class="stars" aria-label="5 out of 5">★★★★★</div><blockquote>“Ambre Nocturne is the first perfume strangers have stopped me in the street to ask about. Still on my scarf two days later.”</blockquote><figcaption>Camille R. · Brooklyn, NY · <em>Ambre Nocturne</em></figcaption></figure>
+            <figure class="voice"><div class="stars" aria-label="5 out of 5">★★★★★</div><blockquote>“I bought the Discovery Set to be sensible and ended up ordering two bottles. The engraving arrived perfect.”</blockquote><figcaption>James O. · London · <em>Sel d'Iris</em></figcaption></figure>
+            <figure class="voice"><div class="stars" aria-label="5 out of 5">★★★★★</div><blockquote>“The bottle alone is an object. The onyx cap has a weight to it that makes everything else on my shelf feel cheap.”</blockquote><figcaption>Lena M. · Toronto · <em>Vétiver Minuit</em></figcaption></figure>
+            <figure class="voice"><div class="stars" aria-label="5 out of 5">★★★★★</div><blockquote>“Figue Solaire smells exactly like my grandmother's garden in August. I did not expect a perfume to make me cry.”</blockquote><figcaption>Sofia P. · Sydney · <em>Figue Solaire</em></figcaption></figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="newsletter section section--dark" aria-labelledby="news-title">
+        <div class="container newsletter__inner">
+          <h2 class="section-title" id="news-title">Letters from <em>the atelier.</em></h2>
+          <p>One letter a season: new batches, the materials behind them, and first access to limited editions.</p>
+          <form class="news-form" data-news-form novalidate>
+            <label class="sr-only" for="news-email">Email address</label>
+            <input id="news-email" name="email" type="email" placeholder="Your email address" autocomplete="email" required>
+            <button class="btn btn--light" type="submit">Subscribe</button>
+            <p class="form-msg" role="status" data-news-msg></p>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================================================================ SHOP LISTING -->
+    <div class="view view--shop" data-view="shop" hidden></div>
+
+    <!-- ================================================================ PRODUCT -->
+    <div class="view view--product" data-view="product" hidden></div>
+
+    <!-- ================================================================ CHECKOUT -->
+    <div class="view view--checkout" data-view="checkout" hidden></div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__grid">
+      <div class="site-footer__brand">
+        <span class="brand__word">ILVÈRE</span>
+        <p>Maison de Parfum since 1921<br>14 rue de Turenne, Paris 3<sup>e</sup></p>
+        <button type="button" class="region-pill" data-region-open>Shipping to <span data-cur-country>United States</span> · <span data-cur-label>USD $</span></button>
+      </div>
+      <div>
+        <h3>Shop</h3>
+        <ul>
+          <li><a href="#/shop/fragrance">Fragrance</a></li>
+          <li><a href="#/shop/home">Home</a></li>
+          <li><a href="#/shop/body">Body</a></li>
+          <li><a href="#/shop/gifts">Gifts</a></li>
+          <li><a href="#/product/giftcard">E-gift cards</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Client care</h3>
+        <ul>
+          <li><a href="#finder" data-nav>Scent finder</a></li>
+          <li><a href="#boutiques" data-nav>Book a consultation</a></li>
+          <li><a href="#refill" data-nav>Refills &amp; Maison Circle</a></li>
+          <li><span>Shipping &amp; returns</span></li>
+          <li><span>Track an order</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>The Maison</h3>
+        <ul>
+          <li><a href="#maison" data-nav>Our story</a></li>
+          <li><a href="#boutiques" data-nav>Boutiques</a></li>
+          <li><span>Corporate gifting</span></li>
+          <li><span>Careers</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container site-footer__pay" aria-label="Payment methods">
+      <span>Visa</span><span>Mastercard</span><span>Amex</span><span>Apple Pay</span><span>Shop Pay</span><span>PayPal</span><span>Klarna</span><span>Afterpay</span>
+    </div>
+    <div class="container site-footer__base">
+      <p>Concept website by an independent studio. Ilvère is a fictional brand; products, boutiques, reviews and prices are illustrative. Every image is an original 3D render.</p>
+      <p>© 2026 Ilvère</p>
+    </div>
+  </footer>
+
+  <!-- bag drawer -->
+  <div class="drawer" data-drawer hidden>
+    <div class="drawer__scrim" data-bag-close></div>
+    <aside class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="bag-title" tabindex="-1" data-drawer-panel>
+      <header class="drawer__head">
+        <h2 id="bag-title">Your bag <span data-bag-count-title></span></h2>
+        <button class="icon-btn" type="button" data-bag-close aria-label="Close bag">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" /></svg>
+        </button>
+      </header>
+      <div class="drawer__ship" data-ship></div>
+      <div class="drawer__body" data-bag-body></div>
+      <footer class="drawer__foot" data-bag-foot></footer>
+    </aside>
+  </div>
+
+  <div class="toast" role="status" aria-live="polite" data-toast></div>
+
+  <noscript><style>.preloader{display:none}</style></noscript>
+</body>
+</html>
