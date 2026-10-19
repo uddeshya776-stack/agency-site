@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nadir scene test</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #05070b; overflow: hidden; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #hud { position: fixed; left: 10px; top: 8px; font: 12px/1.4 ui-monospace, Menlo, monospace; color: #9be3ff; background: rgba(0, 0, 0, 0.5); padding: 6px 8px; white-space: pre; pointer-events: none; z-index: 5; }
+    #hud:empty { display: none; }
+    .zone { position: fixed; border: 1px dashed rgba(255, 210, 120, 0.7); background: rgba(255, 210, 120, 0.06); pointer-events: none; z-index: 4; }
+    .gauge { position: fixed; width: 1px; background: rgba(155, 227, 255, 0.6); pointer-events: none; z-index: 4; }
+    .anchor { position: fixed; width: 9px; height: 9px; margin: -5px 0 0 -5px; border: 1px solid #9be3ff; border-radius: 50%; z-index: 6; pointer-events: none; }
+    .anchor span { position: absolute; left: 12px; top: -4px; font: 10px/1 ui-monospace, monospace; color: #9be3ff; white-space: nowrap; }
+    #controls { position: fixed; right: 10px; bottom: 10px; z-index: 7; font: 12px ui-monospace, monospace; color: #ccd; background: rgba(0, 0, 0, 0.5); padding: 6px 8px; }
+    #controls input { width: 260px; vertical-align: middle; }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="hud"></div>
+  <script type="module">
+    // Test page for src/scene. Params:
+    //   ?c=0..7 chapter, ?tier=high|mid|low, ?mobile=1 (phone framing, mid tier unless ?tier),
+    //   ?frames=N frames before __done (default 24), ?t= scene time, ?wake= qubit wake age (s),
+    //   ?still=1&ss=8 supersampled poster render, ?grain=, ?dpr=, ?intro=1 (play the intro),
+    //   ?zones=1 text-zone guides, ?anchors=1 projected callout anchors, ?ui=1 live slider,
+    //   ?k=<c>:px,py,pz,tx,ty,tz,fov,sx,sy camera override for one chapter, ?rm=1 reduced motion,
+    //   ?contract=1 API self-test (results in window.__contract).
+    const q = new URLSearchParams(location.search);
+    if (q.get('mobile') === '1' && !q.has('tier')) { q.set('tier', 'mid'); history.replaceState(null, '', '?' + q.toString()); }
+    const num = (k, d) => (q.has(k) ? parseFloat(q.get(k)) : d);
+    const chapter = num('c', 0);
+    const still = q.get('still') === '1';
+    const frames = num('frames', still ? 6 : 24) | 0;
+    const playIntro = q.get('intro') === '1';
+    // default scene time per chapter: chapter 2 catches the signal between the still and the cold plate
+    const t = num('t', Math.round(chapter) === 2 ? 1.45 : 3.0);
+    const debug = {
+      chapter, jump: true, settle: true, time: t, dt: 1 / 30, governor: false,
+      noIntro: !playIntro, wakeAge: num('wake', 7.3),
+    };
+    if (q.get('mobile') === '1') debug.portrait = true;
+    if (q.has('k')) {
+      // camera override for framing work: k=<chapter>:px,py,pz,tx,ty,tz,fov,sx,sy
+      const [kc, vals] = q.get('k').split(':');
+      const v = vals.split(',').map(Number);
+      debug.key = { c: +kc, pos: v.slice(0, 3), tgt: v.slice(3, 6), fov: v[6], shift: [v[7] || 0, v[8] || 0] };
+    }
+    if (still) { debug.quality = 'still'; debug.grain = 0; debug.dpr = 1; }
+    if (q.has('grain')) debug.grain = num('grain', 0.03);
+    if (q.has('dpr')) debug.dpr = num('dpr', 1);
+    if (q.get('ui') === '1') { debug.jump = false; debug.dt = undefined; }
+
+    const hud = document.getElementById('hud');
+    const canvas = document.getElementById('gl');
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // ?contract=1: exercises the public API end to end and leaves the results in window.__contract
+    async function contract() {
+      const R = { errors: [] };
+      addEventListener('error', (e) => R.errors.push(String(e.message)));
+      const progress = [];
+      const rm = q.get('rm') === '1';
+      const t0 = performance.now();
+      const { createScene } = await import('./src/scene/index.js');
+      const s = await createScene({ canvas, reducedMotion: rm, onProgress: (p) => progress.push(p), debug: { probe: true } });
+      R.createMs = Math.round(performance.now() - t0);
+      R.progress = { calls: progress.length, last: progress[progress.length - 1], monotonic: progress.every((p, i) => i === 0 || p >= progress[i - 1]) };
+      R.missing = ['setChapter', 'setPointer', 'resize', 'start', 'stop', 'intro', 'project', 'onFrame', 'info', 'dispose'].filter((k) => typeof s[k] !== 'function');
+      R.tier = s.tier && s.tier.name;
+      R.firstFrameIsPromise = s.firstFrame instanceof Promise;
+      const D = s._debug;
+      let seen = [];
+      const off = s.onFrame((c) => seen.push(c));
+      s.setChapter(0);
+      s.start();
+      await s.firstFrame;
+      R.fadeAtFirstFrame = D.post.uniforms.uFade.value;
+      const ti = performance.now();
+      await s.intro();
+      R.intro = { ms: Math.round(performance.now() - ti), fadeAfter: D.post.uniforms.uFade.value };
+      // chapter smoothing: the camera eases toward the target instead of jumping
+      seen = [];
+      s.setChapter(3);
+      await wait(500);
+      const mid = seen[seen.length - 1];
+      await wait(4000);
+      const fx3 = (v) => (v === undefined ? null : +v.toFixed(3));
+      R.smoothing = { frames: seen.length, firstAfterSet: fx3(seen[0]), at500ms: fx3(mid), at4500ms: fx3(seen[seen.length - 1]), monotonic: seen.every((c, i) => i === 0 || c >= seen[i - 1] - 1e-6) };
+      // reduced motion: no drift once the chapter has settled
+      const p1 = D.camera.position.clone();
+      await wait(800);
+      R.cameraMovedWhileSettled = +D.camera.position.distanceTo(p1).toFixed(5);
+      const out = { x: 0, y: 0, visible: false };
+      R.anchors = {};
+      for (const n of ['plate300K', 'plate50K', 'plate4K', 'still', 'coldplate', 'mxc', 'attenuator', 'circulator', 'chip', 'nope']) { s.project(n, out); R.anchors[n] = [Math.round(out.x), Math.round(out.y), out.visible]; }
+      s.setPointer(0.5, -0.3);
+      R.infoRunning = s.info();
+      s.stop();
+      let f0 = s.info().frames; await wait(600);
+      R.framesAfterStop = s.info().frames - f0;
+      s.resize();
+      // context loss: stops and tells the page; restore lets it start again
+      const ext = D.renderer.getContext().getExtension('WEBGL_lose_context');
+      let lostEv = 0, restEv = 0;
+      canvas.addEventListener('contextlost', () => lostEv++);
+      canvas.addEventListener('contextrestored', () => restEv++);
+      s.start(); await wait(400);
+      ext.loseContext(); await wait(400);
+      f0 = s.info().frames; await wait(600);
+      R.contextLost = { events: lostEv, framesWhileLost: s.info().frames - f0 };
+      ext.restoreContext(); await wait(800);
+      s.start(); f0 = s.info().frames; await wait(2500);
+      R.contextRestored = { events: restEv, framesAfterRestart: s.info().frames - f0, errorsSoFar: R.errors.length };
+      off();
+      s.dispose();
+      R.afterDispose = { textures: D.renderer.info.memory.textures, geometries: D.renderer.info.memory.geometries };
+      f0 = s.info().frames; await wait(500);
+      R.framesAfterDispose = s.info().frames - f0;
+      window.__contract = R;
+      window.__done = true;
+    }
+
+    async function normal() {
+      const t0 = performance.now();
+      const { createScene } = await import('./src/scene/index.js');
+      const s = await createScene({ canvas, reducedMotion: q.get('rm') === '1', debug, onProgress: (p) => { hud.textContent = 'building ' + Math.round(p * 100) + '%'; } });
+      hud.textContent = '';
+      window.__scene = s;
+      s.setChapter(chapter);
+
+      // ---- guides
+      const vw = innerWidth, vh = innerHeight;
+      const portrait = vw <= 760 || vw / vh <= 0.8;
+      if (q.get('zones') === '1') {
+        const g = Math.min(72, Math.max(20, vw * 0.042));
+        const zone = (l, tp, w, h) => { const d = document.createElement('div'); d.className = 'zone'; Object.assign(d.style, { left: l + 'px', top: tp + 'px', width: w + 'px', height: h + 'px' }); document.body.appendChild(d); };
+        const k = Math.round(chapter);
+        if (portrait) {
+          zone(g, 84, vw - 2 * g, vh * 0.35 - 84);
+        } else {
+          const colW = Math.min(560, vw * (vw <= 1100 ? 0.56 : 0.42));
+          if (k === 0) zone(g, vh * 0.48, colW, vh * 0.42);
+          else if (k >= 1 && k <= 4) zone(g, vh * 0.55, colW, vh * 0.33);
+          else if (k === 5 || k === 7) zone(g, vh * 0.16, colW, vh * 0.68);
+          else if (k === 6) { zone(g, vh * 0.44, colW, vh * 0.18); zone(g, vh * 0.66, vw - g - 220, vh * 0.25); }
+          if (vw > 900) { const d = document.createElement('div'); d.className = 'gauge'; Object.assign(d.style, { right: g + 'px', top: vh * 0.27 + 'px', height: Math.min(vh * 0.46, 420) + 'px' }); document.body.appendChild(d); }
+        }
+      }
+      const anchors = q.get('anchors') === '1' ? ['plate50K', 'plate4K', 'still', 'coldplate', 'mxc', 'attenuator', 'circulator', 'chip'].map((name) => {
+        const d = document.createElement('div'); d.className = 'anchor'; d.innerHTML = '<span>' + name + '</span>'; document.body.appendChild(d); return { name, d };
+      }) : [];
+      const out = { x: 0, y: 0, visible: false };
+      const placeAnchors = () => anchors.forEach((a) => { s.project(a.name, out); a.d.style.display = out.visible ? 'block' : 'none'; a.d.style.left = out.x + 'px'; a.d.style.top = out.y + 'px'; });
+
+      if (q.get('ui') === '1') {
+        const c = document.createElement('div'); c.id = 'controls';
+        c.innerHTML = 'chapter <input type="range" min="0" max="7" step="0.01" value="' + chapter + '"> <span></span>';
+        document.body.appendChild(c);
+        const inp = c.querySelector('input'), lab = c.querySelector('span');
+        inp.addEventListener('input', () => { s.setChapter(+inp.value); lab.textContent = (+inp.value).toFixed(2); });
+        addEventListener('pointermove', (e) => s.setPointer(e.clientX / innerWidth * 2 - 1, e.clientY / innerHeight * 2 - 1));
+        addEventListener('resize', () => s.resize());
+        s.onFrame((cc) => { placeAnchors(); hud.textContent = 'c ' + cc.toFixed(2) + '  ' + JSON.stringify(s.info().calls) + ' calls'; });
+        s.start();
+        if (playIntro) { await s.firstFrame; s.intro(); }
+      } else {
+        let n = 0;
+        const done = (info) => {
+          placeAnchors();
+          info.wallMs = Math.round(performance.now() - t0);
+          window.__info = info;
+          window.__done = true;
+        };
+        if (still) {
+          // a few frames to settle (bloom history, uploads), then the averaged poster frame
+          const dbgApi = s._debug;
+          for (let i = 0; i < frames; i++) { dbgApi.update(1 / 30); dbgApi.render(); }
+          dbgApi.renderStill(num('ss', 8) | 0);
+          requestAnimationFrame(() => done(s.info()));
+        } else {
+          const off = s.onFrame(() => {
+            n++;
+            if (playIntro && n === 2) s.intro();
+            if (n >= frames) {
+              s.stop(); off();
+              // GPU sync so the capture is the finished frame
+              const gl = s._debug.renderer.getContext(); const px = new Uint8Array(4); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              done(s.info());
+            }
+          });
+          s.start();
+        }
+      }
+    }
+
+    if (q.get('contract') === '1') await contract(); else await normal();
+  </script>
+</body>
+</html>
